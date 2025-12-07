@@ -133,7 +133,7 @@ export const StudyPage: React.FC = () => {
       <div className="flex gap-4 mb-6">
         <ActionCard
           title="新词铸造"
-          subtitle={`学习 20 个新词`}
+          subtitle={`从当前词库中随机抽取20个`}
           icon={Hammer}
           onClick={() => actions.startSession('forge', 20)}
           variant="secondary"

@@ -97,7 +97,8 @@ const CalendarView: React.FC<{ dueDates: Record<string, number> }> = ({ dueDates
 };
 
 export const StatsPage: React.FC = () => {
-    const vocabStats = useLiveQuery(() => getVocabStats());
+    const settings = useLiveQuery(() => db.settings.toCollection().first()); // Fetch settings
+    const vocabStats = useLiveQuery(() => getVocabStats(settings?.selectedBook), [settings?.selectedBook]); // Pass selectedBook
     const recentStats = useLiveQuery(() => getRecentStats(7));
     const streak = useLiveQuery(() => getStudyStreak());
     const totalStats = useLiveQuery(() => getTotalStats());

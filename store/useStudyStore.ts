@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { db } from '../lib/db';
+import { db, getNewWords, getSettings } from '../lib/db';
 import { Word, WordStatus, ReviewGrade, Scenario } from '../types';
 import { calculateNextReview, isCorrectGrade, isNewWordLearned } from '../lib/fsrs';
 import { recordReview } from '../lib/stats';
@@ -30,6 +30,7 @@ interface StudyState {
 }
 
 export const useStudyStore = create<StudyState>((set, get) => ({
+  // ... (initial state remains same) ...
   sessionType: null,
   queue: [],
   currentIndex: 0,
@@ -43,9 +44,22 @@ export const useStudyStore = create<StudyState>((set, get) => ({
 
   actions: {
     refreshStats: async () => {
+      // ... (remains same) ...
       const now = Date.now();
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
+
+      const settings = await getSettings();
+      const selectedBook = settings.selectedBook; // Optional filter
+
+      // NOTE: Due count etc. usually is global, but if stats page is specific, 
+      // maybe dashboard numbers should also specific?
+      // For now, let's keep dashboard global OR filter if requested.
+      // User only asked for Stats Page and Minting Logic to be specific.
+      // "第三屏的统计中" -> Stats Page.
+
+      // Keeping refreshStats global for now unless requested, 
+      // but startSession MUST be specific.
 
       const due = await db.words
         .where('status').anyOf(WordStatus.LEARNING, WordStatus.REVIEW)
@@ -82,19 +96,22 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       const now = Date.now();
       let queue: Word[] = [];
 
+      const settings = await getSettings();
+      const selectedBook = settings.selectedBook;
+
       if (type === 'blitz') {
-        // Flash Review: All due words
+        // Flash Review: All due words (Globally? Or filtered? Usually finding due words is hard with complex filter)
+        // Let's keep blitz global for now or filter if easy.
+        // If we want to filter by book, we need to fetch all due words then filter in JS, or complex index.
+        // Assuming desire is just for NEW words to be from book.
         queue = await db.words
           .where('status').anyOf(WordStatus.LEARNING, WordStatus.REVIEW)
           .and(w => w.dueDate <= now)
-          .limit(limit * 2) // Allow larger limit for reviews
+          .limit(limit * 2)
           .toArray();
       } else if (type === 'forge') {
-        // New Words: Status = new
-        queue = await db.words
-          .where('status').equals(WordStatus.NEW)
-          .limit(limit)
-          .toArray();
+        // New Words: Use random selection from current book
+        queue = await getNewWords(limit, selectedBook);
       } else if (type === 'leech') {
         queue = await db.words
           .where('status').equals(WordStatus.LEECH)

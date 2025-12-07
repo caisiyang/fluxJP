@@ -45,6 +45,7 @@ export interface Settings {
   autoAudio: boolean;
   audioSpeed: number; // 语速 0.5 - 1.5
   theme: 'dark' | 'light';
+  selectedBook?: string; // Currently selected vocab book (e.g. 'N5', 'N1')
 }
 
 export interface DailyStats {

@@ -143,14 +143,15 @@ export const DataImporter: React.FC = () => {
                         kanji,
                         kana: kana || kanji, // Fallback
                         meaning,
-                        level: importSettings.level,
+                        level: (['N1', 'N2', 'N3', 'N4', 'N5', 'Elementary'].includes(importSettings.level) ? importSettings.level : 'Elementary') as Word['level'],
                         status: WordStatus.NEW,
                         interval: 0,
                         easeFactor: 2.5,
                         dueDate: Date.now(),
                         reviewCount: 0,
                         leechCount: 0,
-                        tags: [importSettings.tagName, importSettings.level, 'Imported']
+                        tags: [importSettings.tagName, importSettings.level, 'Imported'],
+                        examples: []
                     };
 
                     wordsToInsert.push(word);
@@ -292,7 +293,7 @@ export const DataImporter: React.FC = () => {
                                 <option value="N3">N3</option>
                                 <option value="N2">N2</option>
                                 <option value="N1">N1</option>
-                                <option value="Custom">自定义</option>
+                                <option value="Elementary">Elementary (基础)</option>
                             </select>
                         </div>
                     </div>

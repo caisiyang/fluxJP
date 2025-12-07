@@ -4,10 +4,29 @@ import { db, updateSettings } from '../lib/db';
 import { WordStatus } from '../types';
 import { Trash2, Book, Volume2, Moon, Sun } from 'lucide-react';
 import { DataImporter } from '../components/DataImporter';
-import { LibraryStore } from '../components/LibraryStore';
+import { LibraryStore, OFFICIAL_BOOKS } from '../components/LibraryStore';
 
 export const ProfilePage: React.FC = () => {
   const settings = useLiveQuery(() => db.settings.toCollection().first());
+
+  // Check which books are installed
+  const installedBooks = useLiveQuery(async () => {
+    const installed = [];
+    for (const book of OFFICIAL_BOOKS) {
+      const count = await db.words
+        .where('level').equals(book.level)
+        .filter(w => w.tags.includes('Official'))
+        .limit(1)
+        .count();
+      if (count > 0) installed.push(book);
+    }
+    return installed;
+  }, []) || [];
+
+  // Find current book title for display
+  const currentBook = installedBooks.find(b => b.level === settings?.selectedBook);
+  const displayTitle = currentBook?.title || (installedBooks.length > 0 ? (settings?.selectedBook || '选择词书') : '暂无词书');
+  const displayDesc = currentBook?.desc || (installedBooks.length > 0 ? '点击切换' : '请到下方下载你需要的词书');
 
   const handleAudioToggle = async () => {
     if (settings) {
@@ -43,19 +62,47 @@ export const ProfilePage: React.FC = () => {
       <div className="space-y-8 max-w-2xl">
 
         {/* Active Book Section */}
-        <section>
+        <section id="book-section">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 pl-1">当前词书</h2>
-          <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 flex items-center justify-between shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)]">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center">
+          <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 flex items-center justify-between shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] relative overflow-hidden">
+
+            {/* Select Overlay */}
+            {installedBooks.length > 0 ? (
+              <select
+                value={settings?.selectedBook || ''}
+                onChange={(e) => updateSettings({ selectedBook: e.target.value })}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              >
+                {installedBooks.map(book => (
+                  <option key={book.id} value={book.level}>
+                    {book.title} ({book.level})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="absolute inset-0 z-10" onClick={() => document.getElementById('library-section')?.scrollIntoView({ behavior: 'smooth' })} />
+            )}
+
+            <div className="flex items-center gap-4 pointer-events-none">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${installedBooks.length > 0 ? 'bg-indigo-50 text-indigo-500' : 'bg-slate-100 text-slate-400'}`}>
                 <Book size={24} />
               </div>
               <div>
-                <h3 className="text-slate-800 font-bold">日常生活词汇</h3>
-                <p className="text-slate-400 text-xs mt-1 font-medium">N5 核心词汇</p>
+                <h3 className="text-slate-800 font-bold text-lg">{displayTitle}</h3>
+                <p className="text-slate-400 text-xs font-medium">{displayDesc}</p>
               </div>
             </div>
-            <span className="text-indigo-600 text-xs font-bold px-3 py-1.5 bg-indigo-50 rounded-lg">使用中</span>
+
+            {installedBooks.length > 0 ? (
+              <div className="flex items-center gap-2 text-indigo-600 text-xs font-bold px-3 py-1.5 bg-indigo-50 rounded-lg pointer-events-none">
+                <span>切换</span>
+                <span className="text-lg leading-none">▾</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-bold px-3 py-1.5 bg-slate-50 rounded-lg pointer-events-none">
+                <span>未安装</span>
+              </div>
+            )}
           </div>
         </section>
 

@@ -5,7 +5,17 @@ import { Cloud, Download, Check, Loader2, BookOpen, AlertCircle } from 'lucide-r
 import { useLiveQuery } from 'dexie-react-hooks';
 
 // --- Real Configuration ---
-const OFFICIAL_BOOKS = [
+export type OfficialBook = {
+    id: string;
+    title: string;
+    desc: string;
+    count: number;
+    level: Word['level'];
+    color: string;
+    url: string;
+};
+
+export const OFFICIAL_BOOKS: OfficialBook[] = [
     {
         id: 'n4_official',
         title: 'N4 进阶词汇',
@@ -13,7 +23,7 @@ const OFFICIAL_BOOKS = [
         count: 1568,
         level: 'N4',
         color: 'bg-emerald-100 text-emerald-600',
-        url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/main/public/N4_Clean.json'
+        url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/refs/heads/main/public/N4_Clean.json'
     },
     {
         id: 'n3_official',
@@ -22,7 +32,7 @@ const OFFICIAL_BOOKS = [
         count: 1579,
         level: 'N3',
         color: 'bg-cyan-100 text-cyan-600',
-        url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/main/public/N3_Clean.json'
+        url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/refs/heads/main/public/N3_Clean.json'
     },
     {
         id: 'n2_official',
@@ -31,7 +41,7 @@ const OFFICIAL_BOOKS = [
         count: 2916,
         level: 'N2',
         color: 'bg-indigo-100 text-indigo-600',
-        url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/main/public/N2_Clean.json'
+        url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/refs/heads/main/public/N2_Clean.json'
     },
     {
         id: 'n1_official',
@@ -40,7 +50,7 @@ const OFFICIAL_BOOKS = [
         count: 4084,
         level: 'N1',
         color: 'bg-rose-100 text-rose-600',
-        url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/main/public/N1_Clean.json'
+        url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/refs/heads/main/public/N1_Clean.json'
     }
 ];
 
@@ -50,25 +60,16 @@ export const LibraryStore: React.FC = () => {
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
     // --- Logic: Check Installed Status ---
-    // Criteria: Database has any word with BOTH tags: [Level] AND 'Official'
     const installedLevels = useLiveQuery(async () => {
         const installed: Record<string, boolean> = {};
 
         for (const book of OFFICIAL_BOOKS) {
-            // We need to check if ANY word has both tags.
-            // Dexie `tags` is a multi-entry index.
-            // We can find all words with 'Official' tag, and limit 1.
-            // Then check if that word also has the level tag.
-            // WAIT. 'Official' tag might be on N5 words, but we want to check N4.
-            // So we should query for book.level, then filter for 'Official'.
-
-            // Count words that have tag=Level AND tag=Official
-            // Note: Dexie `where('tags').equals(val)` returns words having that tag.
-            // We can use a filter on the collection.
-
+            // OPTIMIZED: Use 'level' index which is unique per word, 
+            // then filter for 'Official' tag. Limiting to 1 is enough to know it's installed.
             const count = await db.words
-                .where('tags').equals(book.level)
+                .where('level').equals(book.level)
                 .filter(w => w.tags.includes('Official'))
+                .limit(1)
                 .count();
 
             if (count > 0) {
@@ -151,62 +152,65 @@ export const LibraryStore: React.FC = () => {
                         <div
                             key={book.id}
                             className={`
-                                relative overflow-hidden rounded-2xl border p-5 transition-all
+                                relative p-6 rounded-[1.5rem] border transition-all duration-300 group
                                 ${isInstalled
-                                    ? 'bg-emerald-50/30 border-emerald-100'
-                                    : 'bg-white border-slate-100 hover:shadow-md'
+                                    ? 'bg-white border-slate-100 opacity-80'
+                                    : 'bg-white border-slate-100 hover:border-indigo-100 hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)]'
                                 }
                             `}
                         >
-                            {/* Background Decor */}
-                            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-20 pointer-events-none ${book.color.split(' ')[0]}`} />
-
-                            <div className="relative z-10 flex flex-col justify-between h-full gap-4">
-                                <div className="flex gap-4 items-start">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${book.color}`}>
-                                        <span className="text-sm font-black">{book.level}</span>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-slate-800 text-base">{book.title}</h3>
-                                            {isInstalled && <Check size={14} className="text-emerald-500" strokeWidth={3} />}
-                                        </div>
-                                        <p className="text-xs text-slate-400 mt-1 leading-relaxed line-clamp-2">
-                                            {book.desc}
-                                        </p>
-                                    </div>
+                            <div className="flex items-start justify-between mb-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-lg font-black shadow-sm ${book.color}`}>
+                                    {book.level}
                                 </div>
-
-                                <div className="flex items-center justify-between border-t border-slate-50 pt-3">
-                                    <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400">
-                                        <BookOpen size={12} />
-                                        <span>{book.count} 词</span>
-                                        <span>•</span>
-                                        <span>Official</span>
+                                {isInstalled ? (
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-400 rounded-full text-[10px] font-bold">
+                                        <Check size={12} strokeWidth={3} />
+                                        已下载
                                     </div>
-
-                                    <div>
-                                        {isInstalled ? (
-                                            <button disabled className="px-3 py-1.5 bg-emerald-100 text-emerald-600 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-default opacity-80">
-                                                <Check size={12} strokeWidth={3} />
-                                                已安装
-                                            </button>
+                                ) : (
+                                    <button
+                                        onClick={() => handleDownload(book)}
+                                        disabled={isDownloading}
+                                        className={`
+                                            flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
+                                            ${isDownloading
+                                                ? 'bg-indigo-50 text-indigo-400 cursor-wait'
+                                                : 'bg-slate-900 text-white hover:bg-indigo-600 hover:shadow-lg hover:shadow-indigo-200 active:scale-95'
+                                            }
+                                        `}
+                                    >
+                                        {isDownloading ? (
+                                            <>
+                                                <Loader2 size={12} className="animate-spin" />
+                                                <span>下载中</span>
+                                            </>
                                         ) : (
-                                            <button
-                                                onClick={() => handleDownload(book)}
-                                                disabled={isDownloading}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm
-                                                    ${isDownloading
-                                                        ? 'bg-indigo-50 text-indigo-400 cursor-wait'
-                                                        : 'bg-slate-800 text-white hover:bg-slate-700 active:scale-95'
-                                                    }`}
-                                            >
-                                                {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                                                下载
-                                            </button>
+                                            <>
+                                                <Download size={12} strokeWidth={2.5} />
+                                                <span>获取</span>
+                                            </>
                                         )}
-                                    </div>
-                                </div>
+                                    </button>
+                                )}
+                            </div>
+
+                            <div>
+                                <h3 className="font-bold text-slate-800 text-base mb-1 group-hover:text-indigo-600 transition-colors">
+                                    {book.title}
+                                </h3>
+                                <p className="text-xs text-slate-400 leading-relaxed line-clamp-2 min-h-[2.5em]">
+                                    {book.desc}
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-50 text-[10px] font-medium text-slate-400">
+                                <span className="flex items-center gap-1">
+                                    <BookOpen size={12} />
+                                    {book.count} 词
+                                </span>
+                                <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                <span>Official Build</span>
                             </div>
                         </div>
                     );
