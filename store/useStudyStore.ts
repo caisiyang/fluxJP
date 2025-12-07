@@ -1,23 +1,30 @@
 import { create } from 'zustand';
 import { db } from '../lib/db';
-import { Word, WordStatus, ReviewGrade } from '../types';
-import { calculateNextReview } from '../lib/fsrs';
+import { Word, WordStatus, ReviewGrade, Scenario } from '../types';
+import { calculateNextReview, isCorrectGrade, isNewWordLearned } from '../lib/fsrs';
+import { recordReview } from '../lib/stats';
 
 interface StudyState {
-  sessionType: 'blitz' | 'forge' | null;
+  sessionType: 'blitz' | 'forge' | 'leech' | 'scenario' | null;
   queue: Word[];
   currentIndex: number;
   isLoading: boolean;
-  
+  sessionStartTime: number | null;
+  currentScenario: Scenario | null;
+
   // Dashboard Stats
   dueCount: number;
   newLearnedToday: number;
+  leechCount: number;
   retentionRate: number;
 
   actions: {
     refreshStats: () => Promise<void>;
-    startSession: (type: 'blitz' | 'forge', limit?: number) => Promise<void>;
-    submitGrade: (grade: ReviewGrade) => Promise<void>;
+    startSession: (type: 'blitz' | 'forge' | 'leech' | 'scenario', limit?: number, scenario?: Scenario) => Promise<void>;
+    markEasy: () => Promise<void>;
+    markKeep: () => Promise<void>;
+    markLearned: () => Promise<void>;
+    submitGrade: (grade: ReviewGrade) => Promise<void>; // Deprecated but kept for type compat if needed
     endSession: () => void;
   };
 }
@@ -27,83 +34,160 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   queue: [],
   currentIndex: 0,
   isLoading: false,
+  sessionStartTime: null,
+  currentScenario: null,
   dueCount: 0,
   newLearnedToday: 0,
-  retentionRate: 85, // Mocked for now
+  leechCount: 0,
+  retentionRate: 85,
 
   actions: {
     refreshStats: async () => {
       const now = Date.now();
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
       const due = await db.words
         .where('status').anyOf(WordStatus.LEARNING, WordStatus.REVIEW)
         .and(w => w.dueDate <= now)
         .count();
-      
+
       const newLearned = await db.words
-        .where('status').equals(WordStatus.REVIEW)
-        .and(w => w.dueDate > now && w.reviewCount === 1) // Rough proxy for today
+        .where('status').anyOf(WordStatus.REVIEW, WordStatus.LEARNING)
+        .and(w => w.reviewCount === 1 && w.dueDate >= todayStart.getTime())
         .count();
 
-      set({ dueCount: due, newLearnedToday: newLearned });
+      const leech = await db.words
+        .where('status').equals(WordStatus.LEECH)
+        .count();
+
+      const todayStats = await db.dailyStats
+        .where('date').equals(todayStart.toISOString().split('T')[0])
+        .first();
+
+      const retention = todayStats && todayStats.reviewCount > 0
+        ? Math.round((todayStats.correctCount / todayStats.reviewCount) * 100)
+        : 85;
+
+      set({
+        dueCount: due,
+        newLearnedToday: newLearned,
+        leechCount: leech,
+        retentionRate: retention
+      });
     },
 
-    startSession: async (type, limit = 20) => {
-      set({ isLoading: true, sessionType: type, currentIndex: 0 });
+    startSession: async (type, limit = 20, scenario) => {
+      set({ isLoading: true, sessionType: type, currentIndex: 0, sessionStartTime: Date.now(), currentScenario: scenario || null });
       const now = Date.now();
       let queue: Word[] = [];
 
       if (type === 'blitz') {
-        // Fetch Due items (Learning or Review)
+        // Flash Review: All due words
         queue = await db.words
           .where('status').anyOf(WordStatus.LEARNING, WordStatus.REVIEW)
           .and(w => w.dueDate <= now)
-          .limit(50) // Batch size
+          .limit(limit * 2) // Allow larger limit for reviews
           .toArray();
       } else if (type === 'forge') {
-        // Fetch New items
+        // New Words: Status = new
         queue = await db.words
           .where('status').equals(WordStatus.NEW)
           .limit(limit)
+          .toArray();
+      } else if (type === 'leech') {
+        queue = await db.words
+          .where('status').equals(WordStatus.LEECH)
+          .limit(limit)
+          .toArray();
+      } else if (type === 'scenario' && scenario) {
+        queue = await db.words
+          .where('id').anyOf(scenario.wordIds)
           .toArray();
       }
 
       set({ queue, isLoading: false });
     },
 
-    submitGrade: async (grade) => {
+    markEasy: async () => {
       const { queue, currentIndex } = get();
       const currentWord = queue[currentIndex];
-      if (!currentWord) return;
+      if (!currentWord || !currentWord.id) return;
 
-      const updates = calculateNextReview(currentWord, grade);
-      
-      // Update DB
-      if (currentWord.id) {
-        await db.words.update(currentWord.id, updates);
-      }
+      // DB Action: Mastered, archived (nextReview = null/0)
+      const updates = {
+        status: WordStatus.MASTERED,
+        dueDate: 0,
+        reviewCount: (currentWord.reviewCount || 0) + 1
+      };
+      await db.words.update(currentWord.id, updates);
+      await recordReview(true, false); // Log stat
 
-      // If 'forge' (Again) and we are in a session, we might want to re-queue it at the end
-      // For MVP simplicity, we just move to next, but in real FSRS we re-queue.
-      // Let's implement simple re-queue for 'forge' result in learning mode
-      let newQueue = [...queue];
-      if (grade === 'forge') {
-         // Push a copy with updated status to end of queue to see it again this session
-         newQueue.push({ ...currentWord, ...updates } as Word);
-      }
-
+      // UI Action: Next card
       const nextIndex = currentIndex + 1;
-      
-      if (nextIndex >= newQueue.length) {
-        // Session complete
-        set({ sessionType: null, queue: [] });
+      if (nextIndex >= queue.length) {
+        set({ sessionType: null, queue: [], sessionStartTime: null });
         await get().actions.refreshStats();
       } else {
-        set({ queue: newQueue, currentIndex: nextIndex });
+        set({ currentIndex: nextIndex });
       }
     },
 
+    markKeep: async () => {
+      const { queue, currentIndex } = get();
+      const currentWord = queue[currentIndex];
+      if (!currentWord || !currentWord.id) return;
+
+      // DB Action: Review, 1 day interval
+      const nextDay = Date.now() + 24 * 60 * 60 * 1000;
+      const updates = {
+        status: WordStatus.REVIEW,
+        dueDate: nextDay,
+        interval: 1,
+        reviewCount: (currentWord.reviewCount || 0) + 1
+      };
+      await db.words.update(currentWord.id, updates);
+      await recordReview(true, currentWord.status === WordStatus.NEW);
+
+      // UI Action: Next card
+      const nextIndex = currentIndex + 1;
+      if (nextIndex >= queue.length) {
+        set({ sessionType: null, queue: [], sessionStartTime: null });
+        await get().actions.refreshStats();
+      } else {
+        set({ currentIndex: nextIndex });
+      }
+    },
+
+    markLearned: async () => {
+      const { queue, currentIndex } = get();
+      const currentWord = queue[currentIndex];
+      if (!currentWord || !currentWord.id) return;
+
+      // DB Action: Learning, 10 mins interval
+      const tenMins = Date.now() + 10 * 60 * 1000;
+      const updates = {
+        status: WordStatus.LEARNING,
+        dueDate: tenMins,
+        reviewCount: (currentWord.reviewCount || 0) + 1
+      };
+      await db.words.update(currentWord.id, updates);
+      await recordReview(false, currentWord.status === WordStatus.NEW);
+
+      // UI Action: Insert at end of queue to see again
+      const newQueue = [...queue];
+      newQueue.push({ ...currentWord, ...updates } as Word);
+
+      // Move to next
+      const nextIndex = currentIndex + 1;
+      // Note: newQueue.length increased by 1, so nextIndex is valid even if it was the last one
+      set({ queue: newQueue, currentIndex: nextIndex });
+    },
+
+    // Legacy placeholder to satisfy interface if needed, or we remove from Interface
+    submitGrade: async (grade) => { console.warn("submitGrade is deprecated"); },
     endSession: () => {
-      set({ sessionType: null, queue: [], currentIndex: 0 });
+      set({ sessionType: null, queue: [], currentIndex: 0, sessionStartTime: null });
       get().actions.refreshStats();
     }
   }
