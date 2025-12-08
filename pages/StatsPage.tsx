@@ -46,8 +46,8 @@ export const StatsPage: React.FC = () => {
     return (
         <div className="h-full overflow-y-auto no-scrollbar bg-[#F7F6F2] dark:bg-[#1a1a1a]">
             <header className="px-5 pt-8 pb-4">
-                <h1 className="text-2xl font-black text-slate-800 dark:text-[#f5f5f0]">学习统计</h1>
-                <p className="text-slate-500 dark:text-[#a5a5a0] text-sm mt-1">追踪你的学习进度</p>
+                <h1 className="text-2xl font-black text-slate-800 dark:text-[#f5f5f0]">学習データ</h1>
+                <p className="text-slate-500 dark:text-[#a5a5a0] text-sm mt-1">学習の進捗を確認しましょう</p>
             </header>
 
             <div className="px-5 pb-24 space-y-6">
@@ -55,13 +55,13 @@ export const StatsPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                     <StatCard
                         icon={<Flame size={20} />}
-                        label="连续学习"
-                        value={`${streak} 天`}
+                        label="連続学習"
+                        value={`${streak} 日`}
                         color="text-orange-500"
                     />
                     <StatCard
                         icon={<Target size={20} />}
-                        label="今日正确率"
+                        label="今日の正答率"
                         value={`${todayAccuracy}%`}
                         color="text-emerald-500"
                     />
@@ -79,7 +79,7 @@ export const StatsPage: React.FC = () => {
                 {/* Weekly Mini Chart */}
                 {recentStats.length > 1 && (
                     <div className="bg-[#F7F6F2] dark:bg-[#2a2a2a] rounded-2xl border border-[#E8E6E0] dark:border-[#3a3a3a] p-5 shadow-sm">
-                        <h2 className="text-sm font-bold text-slate-700 dark:text-[#e5e5e0] mb-4">最近7天复习</h2>
+                        <h2 className="text-sm font-bold text-slate-700 dark:text-[#e5e5e0] mb-4">過去7日間の復習</h2>
                         <div className="flex items-end justify-between gap-2 h-20">
                             {[...Array(7)].map((_, i) => {
                                 const date = new Date();
@@ -89,7 +89,7 @@ export const StatsPage: React.FC = () => {
                                 const reviews = dayData?.reviewCount || 0;
                                 const maxReviews = Math.max(...recentStats.map(s => s.reviewCount), 1);
                                 const height = (reviews / maxReviews) * 100;
-                                const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+                                const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
 
                                 return (
                                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
@@ -107,16 +107,16 @@ export const StatsPage: React.FC = () => {
 
                 {/* Cumulative Stats */}
                 <div className="bg-[#F7F6F2] dark:bg-[#2a2a2a] rounded-2xl border border-[#E8E6E0] dark:border-[#3a3a3a] p-5 shadow-sm">
-                    <h2 className="text-sm font-bold text-slate-700 dark:text-[#e5e5e0] mb-3">累计数据</h2>
+                    <h2 className="text-sm font-bold text-slate-700 dark:text-[#e5e5e0] mb-3">累積データ</h2>
                     <div className="flex items-center justify-around text-center">
                         <div>
                             <p className="text-2xl font-black text-slate-700 dark:text-[#e5e5e0]">{totalStats.totalReviews}</p>
-                            <p className="text-[10px] text-slate-400 dark:text-[#888]">总复习次数</p>
+                            <p className="text-[10px] text-slate-400 dark:text-[#888]">総復習回数</p>
                         </div>
                         <div className="w-px h-10 bg-[#E8E6E0] dark:bg-[#3a3a3a]" />
                         <div>
                             <p className="text-2xl font-black text-emerald-500">{totalStats.averageAccuracy.toFixed(0)}%</p>
-                            <p className="text-[10px] text-slate-400 dark:text-[#888]">平均正确率</p>
+                            <p className="text-[10px] text-slate-400 dark:text-[#888]">平均正答率</p>
                         </div>
                     </div>
                 </div>

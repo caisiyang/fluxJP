@@ -88,13 +88,13 @@ export const PredictionCalendar: React.FC = () => {
     return (
         <div className="bg-[#F7F6F2] dark:bg-[#2a2a2a] rounded-2xl border border-[#E8E6E0] dark:border-[#3a3a3a] p-5 shadow-sm relative">
             <h2 className="text-sm font-bold text-slate-700 dark:text-[#e5e5e0] mb-4 flex items-center justify-between">
-                <span>智能预测日历</span>
+                <span>学習予測カレンダー</span>
                 <span className="text-xs font-normal text-slate-400 dark:text-[#888]">{currentYear}年 {currentMonth + 1}月</span>
             </h2>
 
             {/* Week Headers */}
             <div className="grid grid-cols-7 text-center mb-2">
-                {['日', '一', '二', '三', '四', '五', '六'].map(d => (
+                {['日', '月', '火', '水', '木', '金', '土'].map(d => (
                     <div key={d} className="text-[10px] text-slate-400 dark:text-[#888] font-bold">{d}</div>
                 ))}
             </div>
@@ -141,11 +141,11 @@ export const PredictionCalendar: React.FC = () => {
             <div className="mt-4 pt-3 border-t border-[#E8E6E0] dark:border-[#3a3a3a] flex items-center justify-center gap-4 text-[10px] text-slate-400 dark:text-[#888]">
                 <div className="flex items-center gap-1">
                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span>已完成</span>
+                    <span>完了</span>
                 </div>
                 <div className="flex items-center gap-1">
                     <div className="w-2 h-2 rounded-full border-2 border-rose-400" />
-                    <span>预测复习</span>
+                    <span>復習予定</span>
                 </div>
                 <div className="flex items-center gap-1">
                     <div className="w-2 h-2 rounded-full bg-rose-500" />
@@ -162,7 +162,7 @@ export const PredictionCalendar: React.FC = () => {
                         exit={{ opacity: 0, y: 10 }}
                         className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-800 dark:bg-[#1a1a1a] text-white px-4 py-2 rounded-xl text-xs font-medium shadow-lg z-10"
                     >
-                        {selectedDay.isPast ? `已复习: ${selectedDay.count} 词` : `预计复习: ${selectedDay.count} 词`}
+                        {selectedDay.isPast ? `復習完了: ${selectedDay.count} 語` : `復習予定: ${selectedDay.count} 語`}
                     </motion.div>
                 )}
             </AnimatePresence>

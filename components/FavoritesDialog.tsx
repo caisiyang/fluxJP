@@ -79,7 +79,7 @@ export const FavoritesDialog: React.FC<FavoritesDialogProps> = ({
                         <div className="flex items-center justify-between p-5 border-b border-[#E8E6E0] dark:border-[#3a3a3a]">
                             <div className="flex items-center gap-2">
                                 <Heart size={20} className="text-rose-500" fill="currentColor" />
-                                <h2 className="text-lg font-bold text-slate-800 dark:text-[#f5f5f0]">收藏夹</h2>
+                                <h2 className="text-lg font-bold text-slate-800 dark:text-[#f5f5f0]">お気に入り</h2>
                                 <span className="text-xs text-slate-400 dark:text-[#888]">({favorites.length})</span>
                             </div>
                             <button
@@ -95,9 +95,9 @@ export const FavoritesDialog: React.FC<FavoritesDialogProps> = ({
                             {favorites.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
                                     <Heart size={48} className="text-slate-200 dark:text-[#3a3a3a] mb-4" />
-                                    <p className="text-slate-400 dark:text-[#888] text-sm">暂无收藏</p>
+                                    <p className="text-slate-400 dark:text-[#888] text-sm">お気に入りの単語はありません</p>
                                     <p className="text-slate-300 dark:text-[#555] text-xs mt-1">
-                                        在学习卡片中点击 ❤️ 添加收藏
+                                        学習中に ❤️ をタップして追加しましょう
                                     </p>
                                 </div>
                             ) : (
@@ -106,8 +106,8 @@ export const FavoritesDialog: React.FC<FavoritesDialogProps> = ({
                                         <div
                                             key={fav.id}
                                             className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedIds.has(fav.wordId)
-                                                    ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800'
-                                                    : 'bg-white dark:bg-[#2a2a2a] border-[#E8E6E0] dark:border-[#3a3a3a] hover:bg-[#EDEBE5] dark:hover:bg-[#333]'
+                                                ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800'
+                                                : 'bg-white dark:bg-[#2a2a2a] border-[#E8E6E0] dark:border-[#3a3a3a] hover:bg-[#EDEBE5] dark:hover:bg-[#333]'
                                                 }`}
                                             onClick={() => toggleSelect(fav.wordId)}
                                         >
@@ -148,7 +148,7 @@ export const FavoritesDialog: React.FC<FavoritesDialogProps> = ({
                                     className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
                                 >
                                     <Play size={18} />
-                                    复习收藏夹
+                                    お気に入りを復習
                                 </button>
 
                                 {/* Delete Actions */}
@@ -157,19 +157,19 @@ export const FavoritesDialog: React.FC<FavoritesDialogProps> = ({
                                         onClick={handleDeleteSelected}
                                         disabled={selectedIds.size === 0}
                                         className={`flex-1 py-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1 transition-colors ${selectedIds.size > 0
-                                                ? 'bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30'
-                                                : 'bg-[#E8E6E0] dark:bg-[#2a2a2a] text-slate-300 dark:text-[#555] cursor-not-allowed'
+                                            ? 'bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30'
+                                            : 'bg-[#E8E6E0] dark:bg-[#2a2a2a] text-slate-300 dark:text-[#555] cursor-not-allowed'
                                             }`}
                                     >
                                         <Trash2 size={14} />
-                                        删除选中 ({selectedIds.size})
+                                        選択項目を削除 ({selectedIds.size})
                                     </button>
                                     <button
                                         onClick={handleClearAll}
                                         className="flex-1 py-2 rounded-xl text-xs font-medium bg-[#E8E6E0] dark:bg-[#2a2a2a] text-slate-500 dark:text-[#888] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center gap-1"
                                     >
                                         <Trash2 size={14} />
-                                        清空全部
+                                        すべて削除
                                     </button>
                                 </div>
                             </div>

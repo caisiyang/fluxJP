@@ -8,11 +8,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const StatusBadge: React.FC<{ status: WordStatus }> = ({ status }) => {
     const config = {
-        [WordStatus.NEW]: { bg: 'bg-slate-100', text: 'text-slate-500', label: '未学' },
-        [WordStatus.LEARNING]: { bg: 'bg-amber-50', text: 'text-amber-600', label: '学习中' },
-        [WordStatus.REVIEW]: { bg: 'bg-blue-50', text: 'text-blue-600', label: '复习中' },
-        [WordStatus.MASTERED]: { bg: 'bg-emerald-50', text: 'text-emerald-600', label: '已掌握' },
-        [WordStatus.LEECH]: { bg: 'bg-rose-50', text: 'text-rose-600', label: '顽固词' },
+        [WordStatus.NEW]: { bg: 'bg-slate-100', text: 'text-slate-500', label: '新規' },
+        [WordStatus.LEARNING]: { bg: 'bg-amber-50', text: 'text-amber-600', label: '学習中' },
+        [WordStatus.REVIEW]: { bg: 'bg-blue-50', text: 'text-blue-600', label: '復習' },
+        [WordStatus.MASTERED]: { bg: 'bg-emerald-50', text: 'text-emerald-600', label: '習得済' },
+        [WordStatus.LEECH]: { bg: 'bg-rose-50', text: 'text-rose-600', label: '苦手' },
     };
     const c = config[status] || config[WordStatus.NEW];
 
@@ -91,7 +91,7 @@ const SearchResultCard: React.FC<{ word: Word }> = ({ word }) => {
 
                             {word.mnemonic && (
                                 <div className="flex gap-2 text-sm">
-                                    <span className="text-amber-500 font-bold">记:</span>
+                                    <span className="text-amber-500 font-bold">覚:</span>
                                     <span className="text-slate-600">{word.mnemonic}</span>
                                 </div>
                             )}
@@ -110,11 +110,11 @@ export const SearchPage: React.FC = () => {
     return (
         <div className="h-full flex flex-col bg-white">
             <header className="px-5 pt-8 pb-4">
-                <h1 className="text-2xl font-black text-slate-800 mb-4">搜索词汇</h1>
+                <h1 className="text-2xl font-black text-slate-800 mb-4">単語検索</h1>
                 <SearchBar
                     value={query}
                     onChange={setQuery}
-                    placeholder="输入汉字、假名或中文..."
+                    placeholder="漢字、かな、意味を入力..."
                     autoFocus
                 />
             </header>
@@ -123,8 +123,8 @@ export const SearchPage: React.FC = () => {
                 {!query ? (
                     <div className="flex flex-col items-center justify-center h-full text-center py-20">
                         <BookOpen size={48} className="text-slate-200 mb-4" />
-                        <p className="text-slate-400 text-sm">输入关键词开始搜索</p>
-                        <p className="text-slate-300 text-xs mt-1">支持汉字、假名、中文</p>
+                        <p className="text-slate-400 text-sm">キーワードを入力して検索</p>
+                        <p className="text-slate-300 text-xs mt-1">漢字・かな・日本語対応</p>
                     </div>
                 ) : results === undefined ? (
                     <div className="flex items-center justify-center py-20">
@@ -132,12 +132,12 @@ export const SearchPage: React.FC = () => {
                     </div>
                 ) : results.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <p className="text-slate-400 text-sm">未找到匹配的单词</p>
-                        <p className="text-slate-300 text-xs mt-1">尝试其他关键词</p>
+                        <p className="text-slate-400 text-sm">単語が見つかりませんでした</p>
+                        <p className="text-slate-300 text-xs mt-1">別のキーワードを試してください</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        <p className="text-xs text-slate-400 mb-2">找到 {results.length} 个结果</p>
+                        <p className="text-xs text-slate-400 mb-2">{results.length} 件見つかりました</p>
                         {results.map(word => (
                             <SearchResultCard key={word.id} word={word} />
                         ))}

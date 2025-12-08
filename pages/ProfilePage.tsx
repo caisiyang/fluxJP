@@ -38,8 +38,8 @@ export const ProfilePage: React.FC = () => {
   }, [settings?.theme]);
 
   const currentBook = installedBooks.find(b => b.level === settings?.selectedBook);
-  const displayTitle = currentBook?.title || (installedBooks.length > 0 ? (settings?.selectedBook || '选择词书') : '暂无词书');
-  const displayDesc = currentBook?.desc || (installedBooks.length > 0 ? '点击切换' : '请到下方下载词书');
+  const displayTitle = currentBook?.title || (installedBooks.length > 0 ? (settings?.selectedBook || '単語帳を選択') : '単語帳未選択');
+  const displayDesc = currentBook?.desc || (installedBooks.length > 0 ? 'タップして切り替え' : 'リストから選択してください');
 
   const handleAudioToggle = async () => {
     if (settings) {
@@ -56,26 +56,27 @@ export const ProfilePage: React.FC = () => {
   const handleClearAllData = async () => {
     console.log('[ProfilePage] handleClearAllData called');
 
-    const confirmed = window.confirm('确定要清空所有数据吗？这将删除所有已下载的词书和学习进度，此操作不可撤销！');
+    const confirmed = window.confirm('本当にすべてのデータを削除しますか？学習履歴も完全に消去されます。此の操作は取り消せません。');
     console.log('[ProfilePage] User confirmed:', confirmed);
 
     if (confirmed) {
       await db.words.clear();
       await db.dailyStats.clear();
       await updateSettings({ selectedBook: undefined });
-      window.alert('所有数据已清空');
+      window.alert('すべてのデータを削除しました');
+      window.location.reload();
     }
   };
 
   return (
     <div className="h-full p-6 overflow-y-auto no-scrollbar bg-[#F7F6F2] dark:bg-[#1a1a1a]">
-      <h1 className="text-3xl font-black text-slate-800 dark:text-[#f5f5f0] mb-8 mt-4">我的档案</h1>
+      <h1 className="text-3xl font-black text-slate-800 dark:text-[#f5f5f0] mb-8 mt-4">設定</h1>
 
       <div className="space-y-8 max-w-2xl">
 
         {/* Active Book Section */}
         <section id="book-section">
-          <h2 className="text-xs font-bold text-slate-500 dark:text-[#a5a5a0] uppercase tracking-widest mb-4 pl-1">当前词书</h2>
+          <h2 className="text-xs font-bold text-slate-500 dark:text-[#a5a5a0] uppercase tracking-widest mb-4 pl-1">学習中の単語帳</h2>
           <div className="bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] rounded-[1.5rem] p-5 flex items-center justify-between shadow-sm relative overflow-hidden">
 
             {installedBooks.length > 0 ? (
@@ -106,16 +107,16 @@ export const ProfilePage: React.FC = () => {
 
             {installedBooks.length > 1 ? (
               <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 text-xs font-bold px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 rounded-lg pointer-events-none">
-                <span>切换</span>
+                <span>切替</span>
                 <span className="text-lg leading-none">▾</span>
               </div>
             ) : installedBooks.length === 1 ? (
               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg pointer-events-none">
-                <span>使用中</span>
+                <span>選択中</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-slate-400 dark:text-[#888] text-xs font-bold px-3 py-1.5 bg-[#EDEBE5] dark:bg-[#3a3a3a] rounded-lg pointer-events-none">
-                <span>未安装</span>
+                <span>未選択</span>
               </div>
             )}
           </div>
@@ -123,18 +124,18 @@ export const ProfilePage: React.FC = () => {
 
         {/* Official Library */}
         <section id="library-section">
-          <h2 className="text-xs font-bold text-slate-500 dark:text-[#a5a5a0] uppercase tracking-widest mb-4 pl-1">官方词库</h2>
+          <h2 className="text-xs font-bold text-slate-500 dark:text-[#a5a5a0] uppercase tracking-widest mb-4 pl-1">公式単語帳</h2>
           <LibraryStore />
         </section>
 
         {/* Audio Settings */}
         <section>
-          <h2 className="text-xs font-bold text-slate-500 dark:text-[#a5a5a0] uppercase tracking-widest mb-4 pl-1">发音设置</h2>
+          <h2 className="text-xs font-bold text-slate-500 dark:text-[#a5a5a0] uppercase tracking-widest mb-4 pl-1">音声設定</h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-5 bg-[#F7F6F2] dark:bg-[#2a2a2a] rounded-[1.5rem] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm">
               <div className="flex items-center gap-3">
                 <Volume2 size={18} className="text-slate-400 dark:text-[#888]" />
-                <span className="text-slate-700 dark:text-[#e5e5e0] text-sm font-medium">自动播放发音</span>
+                <span className="text-slate-700 dark:text-[#e5e5e0] text-sm font-medium">音声自動再生</span>
               </div>
               <button
                 onClick={handleAudioToggle}
@@ -146,7 +147,7 @@ export const ProfilePage: React.FC = () => {
 
             <div className="p-5 bg-[#F7F6F2] dark:bg-[#2a2a2a] rounded-[1.5rem] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-slate-700 dark:text-[#e5e5e0] text-sm font-medium">语速</span>
+                <span className="text-slate-700 dark:text-[#e5e5e0] text-sm font-medium">再生速度</span>
                 <span className="text-rose-500 font-bold text-sm">{settings?.audioSpeed?.toFixed(1) || '0.9'}x</span>
               </div>
               <input
@@ -159,9 +160,9 @@ export const ProfilePage: React.FC = () => {
                 className="w-full h-2 bg-[#D5D3CD] dark:bg-[#4a4a4a] rounded-lg appearance-none cursor-pointer accent-rose-500"
               />
               <div className="flex justify-between text-[10px] text-slate-400 dark:text-[#888] mt-1">
-                <span>慢速</span>
-                <span>正常</span>
-                <span>快速</span>
+                <span>遅い</span>
+                <span>普通</span>
+                <span>速い</span>
               </div>
             </div>
           </div>
@@ -169,11 +170,11 @@ export const ProfilePage: React.FC = () => {
 
         {/* Theme Toggle */}
         <section>
-          <h2 className="text-xs font-bold text-slate-500 dark:text-[#a5a5a0] uppercase tracking-widest mb-4 pl-1">显示设置</h2>
+          <h2 className="text-xs font-bold text-slate-500 dark:text-[#a5a5a0] uppercase tracking-widest mb-4 pl-1">表示設定</h2>
           <div className="flex items-center justify-between p-5 bg-[#F7F6F2] dark:bg-[#2a2a2a] rounded-[1.5rem] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm">
             <div className="flex items-center gap-3">
               {settings?.theme === 'dark' ? <Moon size={18} className="text-rose-400" /> : <Sun size={18} className="text-orange-400" />}
-              <span className="text-slate-700 dark:text-[#e5e5e0] text-sm font-medium">明暗主题</span>
+              <span className="text-slate-700 dark:text-[#e5e5e0] text-sm font-medium">テーマ設定</span>
             </div>
             <button
               onClick={() => updateSettings({ theme: settings?.theme === 'dark' ? 'light' : 'dark' })}
@@ -191,12 +192,12 @@ export const ProfilePage: React.FC = () => {
             className="w-full p-4 border border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 rounded-2xl flex items-center justify-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium"
           >
             <Trash2 size={18} />
-            <span className="text-sm">清空所有数据</span>
+            <span className="text-sm">全データを削除</span>
           </button>
         </section>
 
         <div className="text-center pt-8 pb-20">
-          <p className="text-[10px] text-slate-400 dark:text-[#666] font-medium tracking-wide">心流日语 v0.3.0</p>
+          <p className="text-[10px] text-slate-400 dark:text-[#666] font-medium tracking-wide">FluxJP v0.3.0</p>
         </div>
       </div>
     </div>

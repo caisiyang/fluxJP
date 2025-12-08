@@ -69,7 +69,7 @@ export const MasteredDialog: React.FC<MasteredDialogProps> = ({
                         <div className="flex items-center justify-between p-5 border-b border-[#E8E6E0] dark:border-[#3a3a3a]">
                             <div className="flex items-center gap-2">
                                 <Trophy size={20} className="text-emerald-500" />
-                                <h2 className="text-lg font-bold text-slate-800 dark:text-[#f5f5f0]">已掌握</h2>
+                                <h2 className="text-lg font-bold text-slate-800 dark:text-[#f5f5f0]">習得済み</h2>
                                 <span className="text-xs text-slate-400 dark:text-[#888]">({masteredWords.length})</span>
                             </div>
                             <button
@@ -85,9 +85,9 @@ export const MasteredDialog: React.FC<MasteredDialogProps> = ({
                             {masteredWords.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
                                     <Trophy size={48} className="text-slate-200 dark:text-[#3a3a3a] mb-4" />
-                                    <p className="text-slate-400 dark:text-[#888] text-sm">暂无已掌握单词</p>
+                                    <p className="text-slate-400 dark:text-[#888] text-sm">習得済みの単語はありません</p>
                                     <p className="text-slate-300 dark:text-[#555] text-xs mt-1">
-                                        多学习几轮就会有啦！
+                                        学習を進めてマスターしましょう！
                                     </p>
                                 </div>
                             ) : (
@@ -106,8 +106,8 @@ export const MasteredDialog: React.FC<MasteredDialogProps> = ({
                                                     whileHover={{ scale: 1.05 }}
                                                     whileTap={{ scale: 0.95 }}
                                                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${isSelected
-                                                            ? 'bg-emerald-500 text-white'
-                                                            : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'
+                                                        ? 'bg-emerald-500 text-white'
+                                                        : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'
                                                         }`}
                                                 >
                                                     {displayWord}
@@ -169,8 +169,9 @@ export const MasteredDialog: React.FC<MasteredDialogProps> = ({
                                     className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
                                 >
                                     <Play size={18} />
-                                    复习已掌握 ({masteredWords.length})
+                                    習得済みを復習 ({masteredWords.length})
                                 </button>
+
                             </div>
                         )}
                     </motion.div>

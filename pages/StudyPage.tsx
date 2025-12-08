@@ -92,7 +92,7 @@ export const StudyPage: React.FC = () => {
     return (
       <div className="h-full flex flex-col items-center justify-center text-rose-500 bg-[#F7F6F2] dark:bg-[#1a1a1a]">
         <Loader2 className="animate-spin mb-3" size={32} />
-        <p className="text-sm text-slate-500 dark:text-[#c5c5c0]">正在加载...</p>
+        <p className="text-sm text-slate-500 dark:text-[#c5c5c0]">読み込み中...</p>
       </div>
     );
   }
@@ -107,13 +107,13 @@ export const StudyPage: React.FC = () => {
           <div className="w-24 h-24 bg-[#EDEBE5] dark:bg-[#2a2a2a] rounded-full flex items-center justify-center text-rose-500 mb-6">
             <Zap size={48} />
           </div>
-          <h2 className="text-2xl font-black text-slate-800 dark:text-[#f5f5f0] mb-2">学习完成！</h2>
-          <p className="text-slate-500 dark:text-[#c5c5c0] mb-10 text-sm">心流状态已达成，休息一下吧。</p>
+          <h2 className="text-2xl font-black text-slate-800 dark:text-[#f5f5f0] mb-2">学習完了！</h2>
+          <p className="text-slate-500 dark:text-[#c5c5c0] mb-10 text-sm">少し休憩しましょう。</p>
           <button
             onClick={actions.endSession}
             className="w-full max-w-xs px-8 py-4 bg-slate-800 dark:bg-rose-600 rounded-2xl text-white font-bold hover:bg-slate-900 dark:hover:bg-rose-700 transition-colors"
           >
-            返回首页
+            ホームに戻る
           </button>
         </div>
       );
@@ -121,11 +121,11 @@ export const StudyPage: React.FC = () => {
 
     const getSessionLabel = () => {
       switch (sessionType) {
-        case 'blitz': return '⚡ 闪击复习';
-        case 'forge': return '🔨 新词铸造';
-        case 'leech': return '🎯 顽固克星';
-        case 'favorites': return '❤️ 收藏夹';
-        default: return '📚 学习';
+        case 'blitz': return '⚡ クイック復習';
+        case 'forge': return '🔨 新規学習';
+        case 'leech': return '🎯 苦手克服';
+        case 'favorites': return '❤️ お気に入り';
+        default: return '📚 学習';
       }
     };
 
@@ -167,9 +167,9 @@ export const StudyPage: React.FC = () => {
       <header className="flex items-center justify-between mb-8 mt-2">
         <div>
           <h1 className="text-3xl font-black text-slate-800 dark:text-[#f5f5f0] tracking-tight mb-1">
-            心流日语
+            Flux日本語
           </h1>
-          <p className="text-sm text-slate-500 dark:text-[#a5a5a0] font-medium">利用SRS原理快速记忆</p>
+          <p className="text-sm text-slate-500 dark:text-[#a5a5a0] font-medium">SRSで効率的に記憶</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -205,20 +205,20 @@ export const StudyPage: React.FC = () => {
       {/* Main Actions */}
       <div className="flex gap-4 mb-6">
         <ActionCard
-          title="新词铸造"
-          subtitle={`从当前词库中随机抽取20个`}
+          title="新規学習"
+          subtitle={`現在のレベルから20語`}
           icon={Hammer}
           onClick={() => actions.startSession('forge', 20)}
           variant="secondary"
         />
         <ActionCard
-          title="闪击复习"
+          title="クイック復習"
           subtitle={
             dueCount > 0
-              ? `待复习: ${dueCount}`
+              ? `復習対象: ${dueCount}`
               : reviewAheadCount > 0
-                ? `可提前复习: ${reviewAheadCount}`
-                : "暂无复习内容"
+                ? `前倒し復習: ${reviewAheadCount}`
+                : "復習完了"
           }
           icon={Zap}
           onClick={() => actions.startSession('blitz')}
@@ -237,8 +237,8 @@ export const StudyPage: React.FC = () => {
             <MoonStar size={24} className="text-indigo-400" />
           </div>
           <div className="flex-1">
-            <h3 className="text-white font-bold text-sm">🌙 晚间复习</h3>
-            <p className="text-slate-300 text-xs">{nightReviewCount} 个单词等待今日闭环</p>
+            <h3 className="text-white font-bold text-sm">🌙 夜間復習</h3>
+            <p className="text-slate-300 text-xs">{nightReviewCount} 語の本日分を完了しましょう</p>
           </div>
           <div className="text-indigo-400 text-xl">→</div>
         </div>
@@ -247,7 +247,7 @@ export const StudyPage: React.FC = () => {
       {/* Status Cards - Two Rows */}
       <div className="flex gap-4 mb-8">
         <StatusCard
-          title="顽固克星"
+          title="苦手な単語"
           count={leechCount}
           icon={AlertTriangle}
           iconColor="text-amber-500"
@@ -255,7 +255,7 @@ export const StudyPage: React.FC = () => {
           onClick={() => actions.startSession('leech', 10)}
         />
         <StatusCard
-          title="已掌握"
+          title="習得済み"
           count={masteredCount}
           icon={Trophy}
           iconColor="text-emerald-500"

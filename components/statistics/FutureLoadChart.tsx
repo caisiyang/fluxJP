@@ -11,7 +11,7 @@ interface DayLoad {
 }
 
 const OVERLOAD_THRESHOLD = 100;
-const DAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
 export const FutureLoadChart: React.FC = () => {
     const futureStats = useLiveQuery(async (): Promise<DayLoad[]> => {
@@ -39,7 +39,7 @@ export const FutureLoadChart: React.FC = () => {
 
             days.push({
                 date,
-                dayLabel: i === 0 ? '今天' : i === 1 ? '明天' : DAY_LABELS[date.getDay()],
+                dayLabel: i === 0 ? '今日' : i === 1 ? '明日' : DAY_LABELS[date.getDay()],
                 count,
                 isOverload: count > OVERLOAD_THRESHOLD
             });
@@ -54,9 +54,9 @@ export const FutureLoadChart: React.FC = () => {
     return (
         <div className="bg-[#F7F6F2] dark:bg-[#2a2a2a] rounded-2xl border border-[#E8E6E0] dark:border-[#3a3a3a] p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold text-slate-700 dark:text-[#e5e5e0]">未来7天压力图</h2>
+                <h2 className="text-sm font-bold text-slate-700 dark:text-[#e5e5e0]">今後7日間の学習負荷</h2>
                 <span className="text-xs text-slate-400 dark:text-[#888]">
-                    共 <span className="font-bold text-rose-500">{totalFuture}</span> 词待复习
+                    合計 <span className="font-bold text-rose-500">{totalFuture}</span> 語の復習予定
                 </span>
             </div>
 
@@ -77,10 +77,10 @@ export const FutureLoadChart: React.FC = () => {
                             {/* Bar */}
                             <div
                                 className={`w-full rounded-t-lg transition-all duration-300 ${day.isOverload
-                                        ? 'bg-gradient-to-t from-red-500 to-red-400'
-                                        : day.count > 0
-                                            ? 'bg-gradient-to-t from-rose-400 to-rose-300'
-                                            : 'bg-[#E8E6E0] dark:bg-[#3a3a3a]'
+                                    ? 'bg-gradient-to-t from-red-500 to-red-400'
+                                    : day.count > 0
+                                        ? 'bg-gradient-to-t from-rose-400 to-rose-300'
+                                        : 'bg-[#E8E6E0] dark:bg-[#3a3a3a]'
                                     }`}
                                 style={{ height: `${Math.max(heightPercent, 8)}%` }}
                             />
@@ -99,11 +99,11 @@ export const FutureLoadChart: React.FC = () => {
             <div className="flex items-center justify-center gap-4 text-[10px] text-slate-400 dark:text-[#888] pt-3 border-t border-[#E8E6E0] dark:border-[#3a3a3a]">
                 <div className="flex items-center gap-1">
                     <div className="w-2.5 h-2.5 rounded-sm bg-rose-400" />
-                    <span>正常复习</span>
+                    <span>通常復習</span>
                 </div>
                 <div className="flex items-center gap-1">
                     <div className="w-2.5 h-2.5 rounded-sm bg-red-500" />
-                    <span>压力过大 (&gt;{OVERLOAD_THRESHOLD})</span>
+                    <span>負荷過多 (&gt;{OVERLOAD_THRESHOLD})</span>
                 </div>
             </div>
         </div>

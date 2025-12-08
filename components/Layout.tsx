@@ -20,10 +20,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }, [settings?.theme]);
 
   const navItems = [
-    { name: '学习', icon: Zap, path: '/' },
-    { name: '语法', icon: BookOpen, path: '/grammar' },
-    { name: '统计', icon: BarChart3, path: '/stats' },
-    { name: '我的', icon: User, path: '/profile' },
+    { name: '学習', icon: Zap, path: '/' },
+    { name: '文法', icon: BookOpen, path: '/grammar' },
+    { name: '統計', icon: BarChart3, path: '/stats' },
+    { name: '設定', icon: User, path: '/profile' },
   ];
 
   return (
@@ -39,37 +39,33 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           {/* Glass Gradient Background */}
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#F7F6F2] dark:from-[#1a1a1a] via-[#F7F6F2]/95 dark:via-[#1a1a1a]/95 to-transparent pointer-events-none transition-colors duration-300" />
 
-          <div className="relative flex justify-around items-end pb-6 h-24 pointer-events-auto px-2">
+          <div className="relative flex justify-around items-end pb-6 h-24 pointer-events-auto px-4 gap-3">
             {navItems.map((item) => (
               <NavLink
                 key={item.name}
                 to={item.path}
                 className={({ isActive }) =>
                   clsx(
-                    "flex flex-col items-center justify-center w-16 h-full gap-1 active:scale-95 transition-all duration-300",
-                    isActive ? "translate-y-[-4px]" : ""
+                    "flex-1 h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-150 active:translate-y-[2px] active:shadow-none border-b-[3px] border-b-transparent",
+                    isActive
+                      ? "bg-white dark:bg-[#2a2a2a] shadow-[0_4px_0_0_#e2e8f0] dark:shadow-[0_4px_0_0_#111] border-b-slate-200 dark:border-b-black translate-y-[-4px]"
+                      : "hover:bg-white/50 dark:hover:bg-[#2a2a2a]/50"
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <div className={clsx(
-                      "transition-all duration-300 relative",
-                      isActive ? "text-[#D45D5D]" : "text-slate-300 dark:text-[#555]"
-                    )}>
-                      {isActive && (
-                        <div className="absolute inset-0 bg-[#D45D5D] blur-xl opacity-20 rounded-full" />
+                    <item.icon
+                      size={20}
+                      strokeWidth={isActive ? 2.5 : 2}
+                      className={clsx(
+                        "transition-colors",
+                        isActive ? "text-rose-500" : "text-slate-400 dark:text-[#666]"
                       )}
-                      <item.icon
-                        size={isActive ? 28 : 24}
-                        strokeWidth={isActive ? 3 : 2}
-                        fill={isActive ? "currentColor" : "none"}
-                        className={isActive ? "icon-3d-nav" : ""}
-                      />
-                    </div>
+                    />
                     <span className={clsx(
-                      "text-[10px] font-bold tracking-wide transition-all duration-300",
-                      isActive ? "text-[#D45D5D] opacity-100" : "text-slate-300 dark:text-[#555] opacity-80"
+                      "text-[10px] font-bold tracking-wide transition-colors",
+                      isActive ? "text-slate-700 dark:text-[#e5e5e0]" : "text-slate-400 dark:text-[#666]"
                     )}>
                       {item.name}
                     </span>

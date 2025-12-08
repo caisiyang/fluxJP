@@ -35,8 +35,9 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
   const displayReading = word.reading || word.kana || '';
   const displayPos = word.pos || word.partOfSpeech || '';
   const displayMeaning = word.meaning || '';
-  const displaySentence = word.sentence || '';
-  const displaySentenceMeaning = word.sentence_meaning || '';
+  // Fallback to word.examples if word.sentence is missing
+  const displaySentence = word.sentence || (word.examples && word.examples[0] ? word.examples[0].jp : '') || '';
+  const displaySentenceMeaning = word.sentence_meaning || (word.examples && word.examples[0] ? word.examples[0].en : '') || '';
 
   // 检查是否已收藏
   useEffect(() => {
@@ -121,17 +122,18 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
       e.preventDefault();
       handleCardClick();
     }
-    if (step >= 1) {
-      if (mode === 'leech') {
-        if (e.key === '1') handleKeep();  // 记住了
-        if (e.key === '2') handleLearned();  // 还需强化
-      } else {
-        if (e.key === '1') handleEasy();
-        if (e.key === '2') handleKeep();
-        if (e.key === '3') handleLearned();
-      }
+    // Buttons are always visible now, so shortcuts should always work?
+    // Or should shortcuts only work for grading?
+    // Usually shortcuts work always if buttons are visible.
+    if (mode === 'leech') {
+      if (e.key === '1') handleKeep();  // 记住了
+      if (e.key === '2') handleLearned();  // 还需强化
+    } else {
+      if (e.key === '1') handleEasy();
+      if (e.key === '2') handleKeep();
+      if (e.key === '3') handleLearned();
     }
-  }, [step, mode, handleCardClick, handleEasy, handleKeep, handleLearned]);
+  }, [mode, handleCardClick, handleEasy, handleKeep, handleLearned]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -154,7 +156,7 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
         className="flex-1 flex flex-col items-center justify-center py-4 px-3 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-700 hover:text-emerald-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
       >
         <Check size={24} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={3} />
-        <span className="text-xs font-bold tracking-wide">记住了</span>
+        <span className="text-xs font-bold tracking-wide">覚えた</span>
       </button>
 
       <button
@@ -162,7 +164,7 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
         className="flex-1 flex flex-col items-center justify-center py-4 px-3 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-amber-200 dark:hover:border-amber-700 hover:text-amber-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
       >
         <RefreshCw size={24} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
-        <span className="text-xs font-bold tracking-wide">还需强化</span>
+        <span className="text-xs font-bold tracking-wide">継続</span>
       </button>
     </motion.div>
   );
@@ -181,7 +183,7 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
         className="flex-1 flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-rose-200 dark:hover:border-rose-700 hover:text-rose-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
       >
         <Swords size={20} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
-        <span className="text-[10px] font-bold tracking-wide">太简单</span>
+        <span className="text-[10px] font-bold tracking-wide">簡単</span>
       </button>
 
       <button
@@ -189,7 +191,7 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
         className="flex-1 flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-700 hover:text-emerald-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
       >
         <Check size={20} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={3} />
-        <span className="text-[10px] font-bold tracking-wide">需强化</span>
+        <span className="text-[10px] font-bold tracking-wide">普通</span>
       </button>
 
       <button
@@ -197,7 +199,7 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
         className="flex-1 flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-amber-200 dark:hover:border-amber-700 hover:text-amber-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
       >
         <BrainCircuit size={20} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
-        <span className="text-[10px] font-bold tracking-wide">不认识</span>
+        <span className="text-[10px] font-bold tracking-wide">忘れた</span>
       </button>
     </motion.div>
   );
@@ -347,27 +349,7 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
             className="bg-[#EDEBE5]/80 dark:bg-[#252525]/80 backdrop-blur-sm border-t border-[#E8E6E0] dark:border-[#3a3a3a] px-5 py-5 pb-6"
           >
             <AnimatePresence mode="wait">
-              {step < 1 ? (
-                <motion.div
-                  key="hint"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="h-16 flex items-center justify-center"
-                >
-                  <div className="flex gap-2">
-                    {[0, 1, 2].map(i => (
-                      <div
-                        key={i}
-                        className={`w-2 h-2 rounded-full transition-all duration-300 ${i <= step ? 'bg-rose-400' : 'bg-[#D5D3CD] dark:bg-[#4a4a4a]'
-                          }`}
-                      />
-                    ))}
-                  </div>
-                </motion.div>
-              ) : (
-                mode === 'leech' ? renderLeechButtons() : renderNormalButtons()
-              )}
+              {mode === 'leech' ? renderLeechButtons() : renderNormalButtons()}
             </AnimatePresence>
           </motion.div>
         </motion.div>
