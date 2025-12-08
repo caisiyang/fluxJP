@@ -8,15 +8,28 @@ export enum WordStatus {
 
 export interface Word {
   id?: number;
-  kanji: string;
-  kana: string;
-  meaning: string;
+
+  // Core Fields (matching new JSON format)
+  word: string;           // 单词 (e.g., 試験) - maps from kanji
+  reading: string;        // 读音 (e.g., しけん) - maps from kana
+  pos: string;            // 词性 (e.g., 名・他動3)
+  meaning: string;        // 中文意思
+
+  // Sentence/Example
+  sentence?: string;      // 例句原文
+  sentence_meaning?: string; // 例句翻译
+
+  // Legacy compatibility aliases
+  kanji?: string;         // Alias for word
+  kana?: string;          // Alias for reading
+
+  // Metadata
   level: 'N5' | 'N4' | 'N3' | 'N2' | 'N1' | 'Elementary';
   tags: string[];
-  category?: string; // 场景分类：日常、购物、餐厅、交通等
-  partOfSpeech?: string; // 词性：名词、动词、形容词等
+  category?: string;      // 场景分类：日常、购物、餐厅、交通等
+  partOfSpeech?: string;  // 词性 (legacy, use pos instead)
 
-  // Learning Data
+  // Learning Data (FSRS)
   status: WordStatus;
   interval: number;
   easeFactor: number;
@@ -24,10 +37,19 @@ export interface Word {
   reviewCount: number;
   leechCount: number;
 
-  // Rich Content
+  // Rich Content (optional)
   mnemonic?: string;
   etymology?: string;
-  examples: { jp: string; en: string }[];
+  examples?: { jp: string; en: string }[];
+}
+
+export interface Favorite {
+  id?: number;
+  wordId: number;
+  word: string;      // 汉字
+  reading: string;   // 读音
+  meaning: string;   // 意思
+  addedAt: number;   // 添加时间
 }
 
 export interface Sentence {

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { db } from '../lib/db';
+import { db, updateSettings } from '../lib/db';
 import { Word, WordStatus } from '../types';
-import { Cloud, Download, Check, Loader2, BookOpen, AlertCircle } from 'lucide-react';
+import { Download, Check, Loader2, BookOpen, Trash2 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 
-// --- Real Configuration ---
 export type OfficialBook = {
     id: string;
     title: string;
@@ -17,13 +16,13 @@ export type OfficialBook = {
 
 export const OFFICIAL_BOOKS: OfficialBook[] = [
     {
-        id: 'n4_official',
-        title: 'N4 进阶词汇',
-        desc: '日常会话基础，涵盖大部分生活场景。',
-        count: 1568,
+        id: 'n4_n5_official',
+        title: 'N4+N5 基础词汇',
+        desc: '日语入门基础，涵盖最常用的初级词汇。',
+        count: 2500,
         level: 'N4',
-        color: 'bg-emerald-100 text-emerald-600',
-        url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/refs/heads/main/public/N4_Clean.json'
+        color: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
+        url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/refs/heads/main/public/N4_N5_Clean.json'
     },
     {
         id: 'n3_official',
@@ -31,7 +30,7 @@ export const OFFICIAL_BOOKS: OfficialBook[] = [
         desc: '能够理解日常话题，衔接高级日语的桥梁。',
         count: 1579,
         level: 'N3',
-        color: 'bg-cyan-100 text-cyan-600',
+        color: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400',
         url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/refs/heads/main/public/N3_Clean.json'
     },
     {
@@ -40,7 +39,7 @@ export const OFFICIAL_BOOKS: OfficialBook[] = [
         desc: '商务日语与学术日语的门槛，深度交流必备。',
         count: 2916,
         level: 'N2',
-        color: 'bg-indigo-100 text-indigo-600',
+        color: 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400',
         url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/refs/heads/main/public/N2_Clean.json'
     },
     {
@@ -49,29 +48,23 @@ export const OFFICIAL_BOOKS: OfficialBook[] = [
         desc: '日语母语者水平，涵盖抽象概念与生僻词。',
         count: 4084,
         level: 'N1',
-        color: 'bg-rose-100 text-rose-600',
+        color: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400',
         url: 'https://raw.githubusercontent.com/caisiyang/fluxJP/refs/heads/main/public/N1_Clean.json'
     }
 ];
 
 export const LibraryStore: React.FC = () => {
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [uninstallingId, setUninstallingId] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-    // --- Logic: Check Installed Status ---
     const installedLevels = useLiveQuery(async () => {
         const installed: Record<string, boolean> = {};
-
         for (const book of OFFICIAL_BOOKS) {
-            // OPTIMIZED: Use 'level' index which is unique per word, 
-            // then filter for 'Official' tag. Limiting to 1 is enough to know it's installed.
             const count = await db.words
                 .where('level').equals(book.level)
-                .filter(w => w.tags.includes('Official'))
                 .limit(1)
                 .count();
-
             if (count > 0) {
                 installed[book.level] = true;
             }
@@ -81,24 +74,26 @@ export const LibraryStore: React.FC = () => {
 
     const handleDownload = async (book: typeof OFFICIAL_BOOKS[0]) => {
         setDownloadingId(book.id);
-        setError(null);
         setSuccessMsg(null);
 
         try {
-            // 1. Fetch
             const response = await fetch(book.url);
             if (!response.ok) {
                 throw new Error(`下载失败 (HTTP ${response.status})`);
             }
 
             const data = await response.json();
-            if (!Array.isArray(data)) throw new Error("无效的词库格式 (Not Array)");
+            if (!Array.isArray(data)) throw new Error("无效的词库格式");
 
-            // 2. Transform & Tag
             const wordsToInsert: Word[] = data.map((item: any) => ({
-                kanji: item.kanji || item.term,
-                kana: item.kana || item.reading,
-                meaning: item.meaning || item.gloss,
+                word: item.word || item.kanji || item.term || '',
+                reading: item.reading || item.kana || '',
+                pos: item.pos || item.partOfSpeech || '',
+                meaning: item.meaning || item.gloss || '',
+                sentence: item.sentence || '',
+                sentence_meaning: item.sentence_meaning || '',
+                kanji: item.word || item.kanji || item.term || '',
+                kana: item.reading || item.kana || '',
                 level: book.level,
                 status: WordStatus.NEW,
                 interval: 0,
@@ -106,79 +101,141 @@ export const LibraryStore: React.FC = () => {
                 dueDate: Date.now(),
                 reviewCount: 0,
                 leechCount: 0,
-                // FORCE TAGS: Level + Official
                 tags: [book.level, 'Official'],
                 examples: []
             }));
 
-            // 3. Bulk Insert
             if (wordsToInsert.length === 0) throw new Error("词库文件为空");
 
-            await db.words.bulkPut(wordsToInsert); // upsert
-            setSuccessMsg(`已成功安装 ${book.title}`);
+            await db.words.bulkPut(wordsToInsert);
+            await updateSettings({ selectedBook: book.level });
 
-            // Clear success msg after 3s
+            setSuccessMsg(`已安装 ${book.title} (${wordsToInsert.length} 词)`);
             setTimeout(() => setSuccessMsg(null), 3000);
 
         } catch (err: any) {
             console.error(err);
-            setError(err.message || "未知错误");
+            setSuccessMsg(`下载失败: ${err.message}`);
         } finally {
             setDownloadingId(null);
         }
     };
 
+    const handleUninstall = async (e: React.MouseEvent, book: typeof OFFICIAL_BOOKS[0]) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        console.log('[LibraryStore] handleUninstall starting for:', book.level);
+        setUninstallingId(book.id);
+
+        try {
+            const wordsToDelete = await db.words
+                .where('level').equals(book.level)
+                .primaryKeys();
+
+            console.log('[LibraryStore] Found words to delete:', wordsToDelete.length);
+
+            if (wordsToDelete.length > 0) {
+                await db.words.bulkDelete(wordsToDelete);
+                console.log('[LibraryStore] Deleted successfully');
+            }
+
+            const settings = await db.settings.toCollection().first();
+            if (settings?.selectedBook === book.level) {
+                await updateSettings({ selectedBook: undefined });
+            }
+
+            setSuccessMsg(`已卸载 ${book.title}，刷新中...`);
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+
+        } catch (err: any) {
+            console.error('[LibraryStore] Uninstall error:', err);
+            setSuccessMsg(`卸载失败: ${err.message}`);
+            setUninstallingId(null);
+        }
+    };
+
+    const handleForceReset = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        console.log('[LibraryStore] Force reset starting...');
+        setSuccessMsg('正在清空数据...');
+
+        try {
+            console.log('[LibraryStore] Clearing words table...');
+            await db.words.clear();
+
+            console.log('[LibraryStore] Clearing dailyStats table...');
+            await db.dailyStats.clear();
+
+            console.log('[LibraryStore] Updating settings...');
+            await updateSettings({ selectedBook: undefined });
+
+            setSuccessMsg('已清空所有数据，刷新中...');
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+
+        } catch (err: any) {
+            console.error('[LibraryStore] Force reset error:', err);
+            setSuccessMsg(`清空失败: ${err.message}`);
+        }
+    };
+
     return (
-        <div className="space-y-4">
-            {error && (
-                <div className="p-3 bg-red-50 text-red-500 text-xs rounded-xl flex items-center gap-2 animate-in fade-in">
-                    <AlertCircle size={14} />
-                    {error}
-                </div>
-            )}
+        <div className="space-y-3">
             {successMsg && (
-                <div className="p-3 bg-emerald-50 text-emerald-600 text-xs rounded-xl flex items-center gap-2 animate-in fade-in">
-                    <Check size={14} />
-                    {successMsg}
+                <div className="p-2.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs rounded-xl flex items-center gap-2">
+                    <span>{successMsg}</span>
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3">
                 {OFFICIAL_BOOKS.map(book => {
                     const isInstalled = installedLevels[book.level];
                     const isDownloading = downloadingId === book.id;
+                    const isUninstalling = uninstallingId === book.id;
 
                     return (
                         <div
                             key={book.id}
-                            className={`
-                                relative p-6 rounded-[1.5rem] border transition-all duration-300 group
-                                ${isInstalled
-                                    ? 'bg-white border-slate-100 opacity-80'
-                                    : 'bg-white border-slate-100 hover:border-indigo-100 hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)]'
-                                }
-                            `}
+                            className="relative p-4 rounded-2xl border border-[#E8E6E0] dark:border-[#3a3a3a] bg-[#F7F6F2] dark:bg-[#2a2a2a]"
                         >
-                            <div className="flex items-start justify-between mb-4">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-lg font-black shadow-sm ${book.color}`}>
-                                    {book.level}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-sm font-black ${book.color}`}>
+                                        {book.level}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-slate-800 dark:text-[#f5f5f0] text-sm">
+                                            {book.title}
+                                        </h3>
+                                        <p className="text-[11px] text-slate-500 dark:text-[#a5a5a0] flex items-center gap-1.5">
+                                            <BookOpen size={10} />
+                                            {book.count} 词
+                                        </p>
+                                    </div>
                                 </div>
+
                                 {isInstalled ? (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-400 rounded-full text-[10px] font-bold">
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-bold">
                                         <Check size={12} strokeWidth={3} />
-                                        已下载
+                                        已安装
                                     </div>
                                 ) : (
                                     <button
+                                        type="button"
                                         onClick={() => handleDownload(book)}
                                         disabled={isDownloading}
-                                        className={`
-                                            flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
-                                            ${isDownloading
-                                                ? 'bg-indigo-50 text-indigo-400 cursor-wait'
-                                                : 'bg-slate-900 text-white hover:bg-indigo-600 hover:shadow-lg hover:shadow-indigo-200 active:scale-95'
-                                            }
-                                        `}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isDownloading
+                                                ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-400 cursor-wait'
+                                                : 'bg-slate-800 dark:bg-rose-600 text-white hover:bg-rose-600 dark:hover:bg-rose-500'
+                                            }`}
                                     >
                                         {isDownloading ? (
                                             <>
@@ -195,26 +252,33 @@ export const LibraryStore: React.FC = () => {
                                 )}
                             </div>
 
-                            <div>
-                                <h3 className="font-bold text-slate-800 text-base mb-1 group-hover:text-indigo-600 transition-colors">
-                                    {book.title}
-                                </h3>
-                                <p className="text-xs text-slate-400 leading-relaxed line-clamp-2 min-h-[2.5em]">
-                                    {book.desc}
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-50 text-[10px] font-medium text-slate-400">
-                                <span className="flex items-center gap-1">
-                                    <BookOpen size={12} />
-                                    {book.count} 词
-                                </span>
-                                <span className="w-1 h-1 rounded-full bg-slate-200" />
-                                <span>Official Build</span>
-                            </div>
+                            {isInstalled && (
+                                <div className="mt-3 pt-3 border-t border-[#E8E6E0] dark:border-[#3a3a3a] flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => handleUninstall(e, book)}
+                                        disabled={isUninstalling}
+                                        className="px-3 py-1.5 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg cursor-pointer flex items-center gap-1"
+                                    >
+                                        <Trash2 size={12} />
+                                        {isUninstalling ? '卸载中...' : '卸载'}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     );
                 })}
+            </div>
+
+            <div className="pt-4 border-t border-[#E8E6E0] dark:border-[#3a3a3a]">
+                <button
+                    type="button"
+                    onClick={handleForceReset}
+                    className="w-full p-3 text-xs text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl cursor-pointer flex items-center justify-center gap-2"
+                >
+                    <Trash2 size={14} />
+                    强制清空所有词库
+                </button>
             </div>
         </div>
     );
