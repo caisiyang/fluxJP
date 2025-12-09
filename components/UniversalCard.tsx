@@ -183,7 +183,7 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
         className="flex-1 flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-rose-200 dark:hover:border-rose-700 hover:text-rose-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
       >
         <Swords size={20} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
-        <span className="text-[10px] font-bold tracking-wide">簡単</span>
+        <span className="text-[10px] font-bold tracking-wide">記憶不要</span>
       </button>
 
       <button
@@ -191,7 +191,7 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
         className="flex-1 flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-700 hover:text-emerald-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
       >
         <Check size={20} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={3} />
-        <span className="text-[10px] font-bold tracking-wide">普通</span>
+        <span className="text-[10px] font-bold tracking-wide">記憶する</span>
       </button>
 
       <button
@@ -199,7 +199,7 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
         className="flex-1 flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-amber-200 dark:hover:border-amber-700 hover:text-amber-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
       >
         <BrainCircuit size={20} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
-        <span className="text-[10px] font-bold tracking-wide">忘れた</span>
+        <span className="text-[10px] font-bold tracking-wide">強化する</span>
       </button>
     </motion.div>
   );

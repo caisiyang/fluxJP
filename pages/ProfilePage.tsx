@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, updateSettings } from '../lib/db';
-import { Trash2, Book, Volume2, Moon, Sun } from 'lucide-react';
+import { Trash2, Book, Volume2, Moon, Sun, Download, Upload } from 'lucide-react';
 import { LibraryStore, OFFICIAL_BOOKS } from '../components/LibraryStore';
 
 export const ProfilePage: React.FC = () => {
@@ -51,6 +51,79 @@ export const ProfilePage: React.FC = () => {
     if (settings) {
       await updateSettings({ audioSpeed: speed });
     }
+  };
+
+  // --- Data Backup & Restore ---
+
+  const handleExportData = async () => {
+    try {
+      const words = await db.words.toArray();
+      const dailyStats = await db.dailyStats.toArray();
+      const settingsData = await db.settings.toArray();
+      const favorites = await db.favorites.toArray();
+
+      const backupData = {
+        version: 1,
+        date: new Date().toISOString(),
+        words,
+        dailyStats,
+        settings: settingsData,
+        favorites
+      };
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+
+      a.href = url;
+      a.download = `fluxjp_backup_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      alert('学習データをエクスポートしました');
+    } catch (error: any) {
+      console.error('Export failed:', error);
+      alert(`エクスポートに失敗しました: ${error.message}`);
+    }
+  };
+
+  const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const json = e.target?.result as string;
+        const data = JSON.parse(json);
+
+        if (!data.words || !Array.isArray(data.words)) {
+          throw new Error('無効なバックアップファイルです (words data missing)');
+        }
+
+        if (!confirm(`バックアップファイルを読み込みますか？\n既存のデータと統合（マージ）します。\n学習進度が高い方を優先して保存します。`)) {
+          // Clear input so same file can be selected again if needed
+          event.target.value = '';
+          return;
+        }
+
+        // Dynamically import merge function to avoid circular deps if any, or just use it
+        const { mergeDatabase } = await import('../lib/db');
+        await mergeDatabase(data);
+
+        alert('データを復元しました。ページを再読み込みします。');
+        window.location.reload();
+
+      } catch (error: any) {
+        console.error('Import failed:', error);
+        alert(`インポートに失敗しました: ${error.message}`);
+        event.target.value = ''; // Reset input
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleClearAllData = async () => {
@@ -185,15 +258,41 @@ export const ProfilePage: React.FC = () => {
           </div>
         </section>
 
-        {/* Danger Zone */}
+        {/* Data Management */}
         <section className="pt-4">
-          <button
-            onClick={handleClearAllData}
-            className="w-full p-4 border border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 rounded-2xl flex items-center justify-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium"
-          >
-            <Trash2 size={18} />
-            <span className="text-sm">全データを削除</span>
-          </button>
+          <h2 className="text-xs font-bold text-slate-500 dark:text-[#a5a5a0] uppercase tracking-widest mb-4 pl-1">データ管理</h2>
+
+          <div className="space-y-3">
+            {/* Export */}
+            <button
+              onClick={handleExportData}
+              className="w-full p-4 bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] rounded-[1.5rem] flex items-center justify-between hover:bg-white dark:hover:bg-[#333] transition-colors shadow-sm"
+            >
+              <span className="text-slate-700 dark:text-[#e5e5e0] font-bold text-sm">学習データをバックアップ (保存)</span>
+              <Download size={18} className="text-slate-400" />
+            </button>
+
+            {/* Import - Hidden Input + Label */}
+            <label className="w-full p-4 bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] rounded-[1.5rem] flex items-center justify-between hover:bg-white dark:hover:bg-[#333] transition-colors shadow-sm cursor-pointer">
+              <span className="text-slate-700 dark:text-[#e5e5e0] font-bold text-sm">学習データを復元 (読み込み)</span>
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportData}
+                className="hidden"
+              />
+              <Upload size={18} className="text-slate-400" />
+            </label>
+
+            {/* Clear Data */}
+            <button
+              onClick={handleClearAllData}
+              className="w-full p-4 border border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 rounded-2xl flex items-center justify-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium mt-6"
+            >
+              <Trash2 size={18} />
+              <span className="text-sm">全データを削除（リセット）</span>
+            </button>
+          </div>
         </section>
 
         <div className="text-center pt-8 pb-20">

@@ -249,3 +249,118 @@ function shuffleArray<T>(array: T[]): T[] {
   }
   return newArr;
 }
+
+/**
+ * Smart Merge Database
+ * Merges imported data with existing data, prioritizing progress.
+ */
+export const mergeDatabase = async (importedData: { words: Word[], dailyStats?: DailyStats[], settings?: Settings[], favorites?: Favorite[] }) => {
+  await db.transaction('rw', db.words, db.dailyStats, db.settings, db.favorites, async () => {
+
+    // 1. Merge Words
+    const existingWords = await db.words.toArray();
+    const existingMap = new Map(existingWords.map(w => [`${w.word}-${w.level}`, w]));
+
+    const wordsToPut: Word[] = [];
+
+    // Status priority for comparison
+    const statusPriority: Record<string, number> = {
+      [WordStatus.MASTERED]: 4,
+      [WordStatus.LEECH]: 3,
+      [WordStatus.REVIEW]: 2,
+      [WordStatus.LEARNING]: 1,
+      [WordStatus.NEW]: 0
+    };
+
+    for (const importWord of importedData.words) {
+      const key = `${importWord.word}-${importWord.level}`;
+      const existing = existingMap.get(key);
+
+      if (existing) {
+        // Conflict: Choose the one with better progress
+        const existingScore = statusPriority[existing.status] || 0;
+        const importScore = statusPriority[importWord.status] || 0;
+
+        if (importScore > existingScore) {
+          // Import is better, update existing record but keep ID
+          wordsToPut.push({ ...importWord, id: existing.id });
+        } else if (importScore === existingScore) {
+          // Tie-breaker: Review count or just keep existing
+          if ((importWord.reviewCount || 0) > (existing.reviewCount || 0)) {
+            wordsToPut.push({ ...importWord, id: existing.id });
+          }
+        }
+        // If existing is better, do nothing (keep existing)
+      } else {
+        // New word, add it (remove ID to let Dexie assign new one if needed, or keep if unique)
+        const { id, ...wordWithoutId } = importWord;
+        wordsToPut.push(wordWithoutId as Word);
+      }
+    }
+
+    if (wordsToPut.length > 0) {
+      await db.words.bulkPut(wordsToPut);
+    }
+
+    // 2. Merge Daily Stats
+    if (importedData.dailyStats) {
+      const statsToPut: DailyStats[] = [];
+      const existingStats = await db.dailyStats.toArray();
+      const statMap = new Map(existingStats.map(s => [s.date, s]));
+
+      for (const importStat of importedData.dailyStats) {
+        const existing = statMap.get(importStat.date);
+        if (existing) {
+          // Merge counts (max strategy)
+          statsToPut.push({
+            ...existing,
+            newWordsLearned: Math.max(existing.newWordsLearned, importStat.newWordsLearned || 0),
+            reviewCount: Math.max(existing.reviewCount, importStat.reviewCount || 0),
+            studyTimeMinutes: Math.max(existing.studyTimeMinutes, importStat.studyTimeMinutes || 0),
+            correctCount: Math.max(existing.correctCount, importStat.correctCount || 0)
+          });
+        } else {
+          const { id, ...statWithoutId } = importStat;
+          statsToPut.push(statWithoutId as DailyStats);
+        }
+      }
+      if (statsToPut.length > 0) {
+        await db.dailyStats.bulkPut(statsToPut);
+      }
+    }
+
+    // 3. Merge Settings (Optional: usually just take latest or import, here we assume import overwrites if provided)
+    if (importedData.settings && importedData.settings.length > 0) {
+      // Ideally we might want to ask user, but for now let's just update if we have nothing
+      const currentSettings = await db.settings.toCollection().first();
+      if (!currentSettings) {
+        await db.settings.add(importedData.settings[0]);
+      }
+    }
+
+    // 4. Merge Favorites
+    if (importedData.favorites) {
+      const favsToPut: Favorite[] = [];
+      const existingFavs = await db.favorites.toArray();
+      // Identify favorites by word text/reading since IDs might differ
+      const favMap = new Map(existingFavs.map(f => [`${f.word}-${f.reading}`, f]));
+
+      for (const importFav of importedData.favorites) {
+        const key = `${importFav.word}-${importFav.reading}`;
+        if (!favMap.has(key)) {
+          const { id, ...favWithoutId } = importFav;
+          // We need to find the correct wordId in the new DB.
+          // This is best effort. If word doesn't exist, we skip or add orphan.
+          // For now, let's look up the word 
+          const matchedWord = await db.words.where({ word: importFav.word, reading: importFav.reading }).first();
+          if (matchedWord && matchedWord.id) {
+            favsToPut.push({ ...favWithoutId, wordId: matchedWord.id });
+          }
+        }
+      }
+      if (favsToPut.length > 0) {
+        await db.favorites.bulkPut(favsToPut);
+      }
+    }
+  });
+};

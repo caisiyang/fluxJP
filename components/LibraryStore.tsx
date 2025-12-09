@@ -22,7 +22,7 @@ export const OFFICIAL_BOOKS: OfficialBook[] = [
         count: 2500,
         level: 'N4',
         color: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
-        url: '/N4_N5_Clean.json'
+        url: 'N4_N5_Clean.json'
     },
     {
         id: 'n3_official',
@@ -31,7 +31,7 @@ export const OFFICIAL_BOOKS: OfficialBook[] = [
         count: 1579,
         level: 'N3',
         color: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400',
-        url: '/N3_Clean.json'
+        url: 'N3_Clean.json'
     },
     {
         id: 'n2_official',
@@ -40,7 +40,7 @@ export const OFFICIAL_BOOKS: OfficialBook[] = [
         count: 2916,
         level: 'N2',
         color: 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400',
-        url: '/N2_Clean.json'
+        url: 'N2_Clean.json'
     },
     {
         id: 'n1_official',
@@ -49,7 +49,7 @@ export const OFFICIAL_BOOKS: OfficialBook[] = [
         count: 4084,
         level: 'N1',
         color: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400',
-        url: '/N1_Clean.json'
+        url: 'N1_Clean.json'
     }
 ];
 
@@ -86,9 +86,27 @@ export const LibraryStore: React.FC = () => {
                 .where('level').equals(book.level)
                 .count();
 
-            // If not installed, import it
-            if (count === 0) {
-                const response = await fetch(book.url);
+            // If not installed, or if data appears corrupted, import it
+            let needsImport = count === 0;
+
+            if (count > 0) {
+                // Check a sample for corruption (empty word/kanji)
+                const sample = await db.words.where('level').equals(book.level).first();
+                // If sample exists but has no valid word field, consider it corrupted
+                if (sample && !sample.word && !sample.kanji) {
+                    console.warn(`[LibraryStore] Corrupted data detected for ${book.level}. Forcing re-import.`);
+                    needsImport = true;
+                    // Delete old corrupted data
+                    await db.words.where('level').equals(book.level).delete();
+                }
+            }
+
+            if (needsImport) {
+                const baseUrl = import.meta.env.BASE_URL;
+                const fullUrl = `${baseUrl}${book.url}`.replace('//', '/'); // Encode base url logic
+                console.log(`[LibraryStore] Fetching from: ${fullUrl}`);
+
+                const response = await fetch(fullUrl);
                 if (!response.ok) {
                     throw new Error(`ダウンロードに失敗しました (HTTP ${response.status})`);
                 }
