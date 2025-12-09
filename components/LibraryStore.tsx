@@ -90,11 +90,17 @@ export const LibraryStore: React.FC = () => {
             let needsImport = count === 0;
 
             if (count > 0) {
-                // Check a sample for corruption (empty word/kanji)
+                // Check a sample for corruption (empty word/kanji OR word contains POS tag)
                 const sample = await db.words.where('level').equals(book.level).first();
-                // If sample exists but has no valid word field, consider it corrupted
-                if (sample && !sample.word && !sample.kanji) {
-                    console.warn(`[LibraryStore] Corrupted data detected for ${book.level}. Forcing re-import.`);
+
+                // Bad data pattern: word field contains POS tag or is missing
+                const BAD_POS_TAGS = ['イ形', 'ナ形', '名', '動', '副', '他', '自', '接', '連', '感', '助', '代', '名・副', '名・他'];
+                const isCorrupted = !sample ||
+                    (!sample.word && !sample.kanji) ||
+                    (sample.word && BAD_POS_TAGS.includes(sample.word));
+
+                if (isCorrupted) {
+                    console.warn(`[LibraryStore] Corrupted data detected for ${book.level} (Word="${sample?.word}"). Forcing re-import.`);
                     needsImport = true;
                     // Delete old corrupted data
                     await db.words.where('level').equals(book.level).delete();
