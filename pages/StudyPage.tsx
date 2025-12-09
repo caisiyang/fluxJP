@@ -131,20 +131,6 @@ export const StudyPage: React.FC = () => {
 
     return (
       <div className="h-full flex flex-col relative px-4 bg-[#F7F6F2] dark:bg-[#1a1a1a]">
-        {/* Session Header */}
-        <div className="absolute top-6 left-0 right-0 flex justify-center items-center pointer-events-none z-10">
-          <div className="bg-[#F7F6F2]/90 dark:bg-[#2a2a2a]/90 backdrop-blur-md border border-[#E8E6E0] dark:border-[#3a3a3a] rounded-full px-5 py-1.5 text-xs font-medium text-slate-600 dark:text-[#c5c5c0] shadow-sm">
-            {getSessionLabel()} • {currentIndex + 1} / {queue.length}
-          </div>
-        </div>
-
-        {/* Close Button */}
-        <button
-          onClick={actions.endSession}
-          className="absolute top-5 right-5 p-2 bg-[#EDEBE5]/80 dark:bg-[#2a2a2a]/80 rounded-full text-slate-500 hover:text-slate-800 dark:text-[#a5a5a0] dark:hover:text-[#f5f5f0] hover:bg-[#E8E6E0] dark:hover:bg-[#3a3a3a] transition-all z-20"
-        >
-          <span className="text-xl leading-none">×</span>
-        </button>
 
         <div className="flex-1 flex items-center justify-center py-6 pb-safe">
           <UniversalCard
@@ -152,6 +138,7 @@ export const StudyPage: React.FC = () => {
             onEasy={actions.markEasy}
             onKeep={actions.markKeep}
             onLearned={actions.markLearned}
+            onClose={actions.endSession}
             progress={{ current: currentIndex + 1, total: queue.length }}
             mode={sessionType === 'leech' ? 'leech' : 'normal'}
           />
@@ -197,8 +184,8 @@ export const StudyPage: React.FC = () => {
 
       {/* Stats Pill */}
       <StatsPill
-        learnedToday={newLearnedToday}
-        reviewedToday={reviewedToday}
+        learnedToday={reviewedToday}
+        reviewedToday={newLearnedToday}
         leechCount={leechCount}
       />
 

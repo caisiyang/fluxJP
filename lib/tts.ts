@@ -1,45 +1,91 @@
 /**
  * TTS (Text-to-Speech) 模块
- * 使用免费的 Web Speech API 实现日语发音
+ * 优先级: StreamElements (Mizuki) -> Google Translate -> Native Web Speech API
  */
 
-// 缓存日语语音
+let currentAudio: HTMLAudioElement | null = null;
+
+// 缓存日语语音 (Native)
 let cachedJapaneseVoice: SpeechSynthesisVoice | null = null;
 
 /**
- * 获取日语语音
+ * 获取 Native 日语语音
  */
-const getJapaneseVoice = (): SpeechSynthesisVoice | null => {
+const getNativeVoice = (): SpeechSynthesisVoice | null => {
     if (cachedJapaneseVoice) return cachedJapaneseVoice;
-
     const voices = speechSynthesis.getVoices();
     // 优先查找日语女声
     cachedJapaneseVoice = voices.find(v => v.lang === 'ja-JP' && v.name.includes('Female'))
         || voices.find(v => v.lang === 'ja-JP')
         || voices.find(v => v.lang.startsWith('ja'))
         || null;
-
     return cachedJapaneseVoice;
 };
 
 /**
- * 朗读日语文本
- * @param text - 要朗读的日语文本
- * @param rate - 语速 (0.5 - 2.0，默认 0.9)
+ * 停止当前朗读
  */
-export const speak = (text: string, rate: number = 0.9): void => {
-    // 如果正在朗读，先停止
+export const stopSpeaking = (): void => {
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+    }
     if (speechSynthesis.speaking) {
         speechSynthesis.cancel();
     }
+};
 
+/**
+ * 播放网络音频 (通过 Fetch Blob 方式，避免部分 CORS/Hotlink 问题)
+ */
+const playOnlineAudio = async (url: string, rate: number): Promise<void> => {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        return new Promise((resolve, reject) => {
+            const audio = new Audio(blobUrl);
+            audio.playbackRate = rate;
+
+            audio.onended = () => {
+                currentAudio = null;
+                URL.revokeObjectURL(blobUrl); // 清理内存
+                resolve();
+            };
+
+            audio.onerror = (e) => {
+                currentAudio = null;
+                URL.revokeObjectURL(blobUrl);
+                // 尝试获取更多错误信息
+                const errorMsg = (audio.error) ? `Code: ${audio.error.code}, Message: ${audio.error.message}` : 'Unknown Audio Error';
+                reject(new Error(errorMsg));
+            };
+
+            currentAudio = audio;
+            audio.play().catch(err => {
+                URL.revokeObjectURL(blobUrl);
+                reject(err);
+            });
+        });
+    } catch (err) {
+        throw err;
+    }
+};
+
+/**
+ * Native TTS Fallback
+ */
+const speakNative = (text: string, rate: number) => {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ja-JP';
     utterance.rate = Math.max(0.5, Math.min(2.0, rate));
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
-    const voice = getJapaneseVoice();
+    const voice = getNativeVoice();
     if (voice) {
         utterance.voice = voice;
     }
@@ -48,32 +94,56 @@ export const speak = (text: string, rate: number = 0.9): void => {
 };
 
 /**
- * 停止朗读
+ * 朗读日语文本
+ * @param text - 要朗读的日语文本
+ * @param rate - 语速 (0.5 - 2.0，默认 0.9)
  */
-export const stopSpeaking = (): void => {
-    speechSynthesis.cancel();
+export const speak = async (text: string, rate: number = 0.9): Promise<void> => {
+    stopSpeaking();
+
+    if (!text) return;
+
+    // 1. Try StreamElements (Mizuki - High Quality Neural)
+    try {
+        const url = `https://api.streamelements.com/kappa/v2/speech?voice=Mizuki&text=${encodeURIComponent(text)}`;
+        await playOnlineAudio(url, rate);
+        return;
+    } catch (e) {
+        console.warn('StreamElements TTS failed, trying Google...', e);
+    }
+
+    // 2. Try Google Translate TTS (Unofficial)
+    try {
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=ja&client=tw-ob`;
+        await playOnlineAudio(url, rate);
+        return;
+    } catch (e) {
+        console.warn('Google TTS failed, falling back to Native...', e);
+    }
+
+    // 3. Fallback to Native
+    speakNative(text, rate);
 };
 
 /**
  * 检查 TTS 是否可用
  */
 export const isTTSAvailable = (): boolean => {
-    return 'speechSynthesis' in window;
+    return 'speechSynthesis' in window || 'Audio' in window;
 };
 
 /**
- * 预加载语音（在页面加载时调用）
- * 某些浏览器需要先调用 getVoices 才能使用
+ * 预加载 Native 语音
  */
 export const preloadVoices = (): Promise<void> => {
     return new Promise((resolve) => {
         const voices = speechSynthesis.getVoices();
         if (voices.length > 0) {
-            getJapaneseVoice();
+            getNativeVoice();
             resolve();
         } else {
             speechSynthesis.addEventListener('voiceschanged', () => {
-                getJapaneseVoice();
+                getNativeVoice();
                 resolve();
             }, { once: true });
         }

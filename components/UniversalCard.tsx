@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Volume2, Heart, Check, RefreshCw, Swords, BrainCircuit, X } from 'lucide-react';
 import { Word, ReviewGrade } from '../types';
-import { Check, BrainCircuit, Swords, Volume2, Heart, RefreshCw } from 'lucide-react';
 import { speak, isTTSAvailable } from '../lib/tts';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addFavorite, removeFavorite, isFavorite } from '../lib/db';
@@ -12,8 +12,9 @@ interface UniversalCardProps {
   onKeep?: () => void;
   onLearned?: () => void;
   onReview?: (grade: ReviewGrade) => void;
+  onClose?: () => void;
   progress?: { current: number; total: number };
-  mode?: 'normal' | 'leech';  // 模式：普通或顽固克星
+  mode?: 'normal' | 'leech';
 }
 
 type DisclosureState = 0 | 1 | 2;
@@ -24,6 +25,7 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
   onKeep,
   onLearned,
   onReview,
+  onClose,
   progress,
   mode = 'normal'
 }) => {
@@ -35,11 +37,9 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
   const displayReading = word.reading || word.kana || '';
   const displayPos = word.pos || word.partOfSpeech || '';
   const displayMeaning = word.meaning || '';
-  // Fallback to word.examples if word.sentence is missing
   const displaySentence = word.sentence || (word.examples && word.examples[0] ? word.examples[0].jp : '') || '';
   const displaySentenceMeaning = word.sentence_meaning || (word.examples && word.examples[0] ? word.examples[0].en : '') || '';
 
-  // 检查是否已收藏
   useEffect(() => {
     if (word.id) {
       isFavorite(word.id).then(setIsFav);
@@ -65,23 +65,32 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
     }
   }, [displaySentence, settings?.audioSpeed]);
 
-  // 自动发音：点击一次后朗读单词
+  // Auto-play audio on mount/word change (Step 0)
   useEffect(() => {
-    if (settings?.autoAudio && step === 1 && isTTSAvailable()) {
-      const textToSpeak = displayReading || displayWord;
-      speak(textToSpeak, settings.audioSpeed);
-    }
-  }, [step, displayReading, displayWord, settings?.autoAudio, settings?.audioSpeed]);
-
-  // 自动发音：点击两次后朗读例句
-  useEffect(() => {
-    if (settings?.autoAudio && step === 2 && displaySentence && isTTSAvailable()) {
+    if (word.id && isTTSAvailable()) {
+      // Small delay to ensure smooth transition
       const timer = setTimeout(() => {
-        speak(displaySentence, settings.audioSpeed);
-      }, 800);
+        const textToSpeak = displayReading || displayWord;
+        speak(textToSpeak, settings?.audioSpeed || 0.9);
+      }, 300);
       return () => clearTimeout(timer);
     }
-  }, [step, displaySentence, settings?.autoAudio, settings?.audioSpeed]);
+  }, [word.id, displayReading, displayWord, settings?.audioSpeed]);
+
+  // Auto-play for step changes (Reading / Sentence)
+  useEffect(() => {
+    if (!settings?.autoAudio || !isTTSAvailable()) return;
+
+    if (step === 1) { // Reading
+      const textToSpeak = displayReading || displayWord;
+      speak(textToSpeak, settings.audioSpeed);
+    } else if (step === 2 && displaySentence) { // Sentence
+      const timer = setTimeout(() => {
+        speak(displaySentence, settings.audioSpeed);
+      }, 300); // Small delay for animation
+      return () => clearTimeout(timer);
+    }
+  }, [step, displayReading, displayWord, displaySentence, settings?.autoAudio, settings?.audioSpeed]);
 
   const handleCardClick = useCallback(() => {
     if (step < 2) {
@@ -92,7 +101,6 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
   const handleToggleFavorite = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!word.id) return;
-
     if (isFav) {
       await removeFavorite(word.id);
       setIsFav(false);
@@ -122,12 +130,9 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
       e.preventDefault();
       handleCardClick();
     }
-    // Buttons are always visible now, so shortcuts should always work?
-    // Or should shortcuts only work for grading?
-    // Usually shortcuts work always if buttons are visible.
     if (mode === 'leech') {
-      if (e.key === '1') handleKeep();  // 记住了
-      if (e.key === '2') handleLearned();  // 还需强化
+      if (e.key === '1') handleKeep();
+      if (e.key === '2') handleLearned();
     } else {
       if (e.key === '1') handleEasy();
       if (e.key === '2') handleKeep();
@@ -140,220 +145,222 @@ export const UniversalCard: React.FC<UniversalCardProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  const progressPercent = progress ? (progress.current / progress.total) * 100 : 0;
+  // 3D Button Style Class
+  const buttonBaseClass = "flex-1 flex flex-col items-center justify-center py-4 rounded-xl border-2 transition-all active:translate-y-[4px] active:shadow-none bg-white relative";
 
-  // 顽固克星模式的按钮
+  // Specific styles for 3D effect
+  const getButtonStyles = (color: 'slate' | 'emerald' | 'amber') => {
+    const colorMap = {
+      slate: 'border-slate-200 shadow-[0_4px_0_#e2e8f0] text-slate-500 active:border-slate-300',
+      emerald: 'border-emerald-200 shadow-[0_4px_0_#a7f3d0] text-emerald-600',
+      amber: 'border-amber-200 shadow-[0_4px_0_#fde68a] text-amber-600'
+    };
+    return `${buttonBaseClass} ${colorMap[color]}`;
+  };
+
   const renderLeechButtons = () => (
     <motion.div
       key="leech-buttons"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
-      className="flex w-full justify-between gap-4"
+      className="flex w-full justify-between gap-3 px-2"
     >
       <button
         onClick={handleKeep}
-        className="flex-1 flex flex-col items-center justify-center py-4 px-3 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-700 hover:text-emerald-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
+        className={getButtonStyles('emerald')}
       >
-        <Check size={24} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={3} />
-        <span className="text-xs font-bold tracking-wide">覚えた</span>
+        <Check size={24} className="mb-1" strokeWidth={3} />
+        <span className="text-[11px] font-black tracking-wider">覚えた</span>
       </button>
 
       <button
         onClick={handleLearned}
-        className="flex-1 flex flex-col items-center justify-center py-4 px-3 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-amber-200 dark:hover:border-amber-700 hover:text-amber-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
+        className={getButtonStyles('amber')}
       >
-        <RefreshCw size={24} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
-        <span className="text-xs font-bold tracking-wide">継続</span>
+        <RefreshCw size={24} className="mb-1" strokeWidth={3} />
+        <span className="text-[11px] font-black tracking-wider">継続</span>
       </button>
     </motion.div>
   );
 
-  // 普通模式的按钮
   const renderNormalButtons = () => (
     <motion.div
       key="normal-buttons"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
-      className="flex w-full justify-between gap-3"
+      className="flex w-full justify-between gap-3 px-2"
     >
       <button
         onClick={handleEasy}
-        className="flex-1 flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-rose-200 dark:hover:border-rose-700 hover:text-rose-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
+        className={getButtonStyles('slate')}
       >
-        <Swords size={20} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
-        <span className="text-[10px] font-bold tracking-wide">記憶不要</span>
+        <Swords size={24} className="mb-1" strokeWidth={2.5} />
+        <span className="text-[11px] font-black tracking-wider">記憶不要</span>
       </button>
 
       <button
         onClick={handleKeep}
-        className="flex-1 flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-700 hover:text-emerald-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
+        className={getButtonStyles('slate')}
       >
-        <Check size={20} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={3} />
-        <span className="text-[10px] font-bold tracking-wide">記憶する</span>
+        <Check size={24} className="mb-1" strokeWidth={3} />
+        <span className="text-[11px] font-black tracking-wider">記憶する</span>
       </button>
 
       <button
         onClick={handleLearned}
-        className="flex-1 flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#F7F6F2] dark:bg-[#2a2a2a] border border-[#E8E6E0] dark:border-[#3a3a3a] shadow-sm hover:shadow-md hover:border-amber-200 dark:hover:border-amber-700 hover:text-amber-500 text-slate-500 dark:text-[#a5a5a0] transition-all active:scale-95 group"
+        className={getButtonStyles('slate')}
       >
-        <BrainCircuit size={20} className="mb-1 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
-        <span className="text-[10px] font-bold tracking-wide">強化する</span>
+        <BrainCircuit size={24} className="mb-1" strokeWidth={2.5} />
+        <span className="text-[11px] font-black tracking-wider">強化する</span>
       </button>
     </motion.div>
   );
 
   return (
-    <div className="w-full h-full flex flex-col relative">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={word.id}
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, x: -50 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="flex-1 flex flex-col relative bg-[#F7F6F2] dark:bg-[#2a2a2a] rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.4)] overflow-hidden mx-3 border border-[#E8E6E0] dark:border-[#3a3a3a]"
-        >
-          {/* Progress Bar */}
-          {progress && (
-            <div className="h-1.5 w-full bg-[#E8E6E0] dark:bg-[#3a3a3a]">
-              <motion.div
-                className="h-full bg-gradient-to-r from-rose-400 to-rose-500"
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercent}%` }}
-                transition={{ duration: 0.3 }}
-              />
-            </div>
-          )}
+    <div className="w-full h-full flex flex-col relative bg-[#F7F6F2]">
+      <div className="flex-1 flex flex-col relative overflow-hidden rounded-[2rem] mx-2 my-2 bg-[#F7F6F2] shadow-sm ring-1 ring-slate-900/5">
 
-          {/* Level Badge */}
-          <div className="absolute top-5 left-5 z-10">
-            <span className="px-3 py-1.5 bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 text-[10px] font-black rounded-lg uppercase tracking-wide">
+        {/* Progress Bar Header */}
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-100 z-20">
+          {progress && (
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${(progress.current / progress.total) * 100}%` }}
+              className="h-full bg-rose-500 rounded-r-full"
+            />
+          )}
+        </div>
+
+        {/* Header Content */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-2 z-10 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-rose-500 tracking-widest uppercase opacity-80">
               {word.level}
             </span>
           </div>
 
-          {/* Top Right Buttons */}
-          <div className="absolute top-5 right-5 z-10 flex gap-2">
-            {/* Favorite Button */}
+          <div className="flex gap-2">
             <button
               onClick={handleToggleFavorite}
-              className={`p-2.5 rounded-xl transition-all active:scale-95 ${isFav
-                ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-500'
-                : 'bg-[#EDEBE5] dark:bg-[#3a3a3a] text-slate-400 dark:text-[#888] hover:text-rose-500'
-                }`}
+              className={`p-2 rounded-lg transition-all active:scale-95 ${isFav ? 'bg-rose-50 text-rose-500' : 'hover:bg-slate-100/80 text-slate-400'}`}
             >
-              <Heart size={18} fill={isFav ? 'currentColor' : 'none'} />
+              <Heart size={20} fill={isFav ? 'currentColor' : 'none'} strokeWidth={2} />
             </button>
-
-            {/* TTS Button */}
             <button
               onClick={handleSpeak}
-              className="p-2.5 bg-[#EDEBE5] dark:bg-[#3a3a3a] hover:bg-rose-100 dark:hover:bg-rose-900/40 text-slate-500 dark:text-[#a5a5a0] hover:text-rose-500 rounded-xl transition-all active:scale-95"
+              className="p-2 rounded-lg hover:bg-slate-100/80 text-slate-400 transition-all active:scale-95"
             >
-              <Volume2 size={18} />
+              <Volume2 size={20} strokeWidth={2} />
             </button>
-          </div>
-
-          {/* Main Content Area */}
-          <motion.div
-            layout
-            className="flex-1 flex flex-col items-center justify-center px-6 py-16 cursor-pointer select-none"
-            onClick={handleCardClick}
-          >
-            <motion.div layout className="text-center w-full">
-              {/* Word (Kanji) */}
-              <h1
-                className="text-6xl sm:text-7xl font-black text-slate-800 dark:text-[#f5f5f0] tracking-tight leading-tight"
-                style={{ fontFamily: "'Noto Sans JP', sans-serif" }}
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-2 rounded-lg hover:bg-slate-100/80 text-slate-400 transition-all active:scale-95"
               >
-                {displayWord}
-              </h1>
+                <X size={20} strokeWidth={2} />
+              </button>
+            )}
+          </div>
+        </div>
 
-              {/* Reading + POS (Below Kanji) */}
-              <AnimatePresence>
-                {step >= 1 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="mt-4 flex flex-row items-center justify-center gap-3"
-                  >
-                    <span className="text-3xl text-slate-600 dark:text-[#c5c5c0] font-medium">
+        {/* Main Content Area */}
+        <motion.div
+          layout
+          className="flex-1 flex flex-col items-center overflow-y-auto px-4 pt-2 pb-36 no-scrollbar scrolling-touch" // Increased pb-36 for safe area
+          onClick={handleCardClick}
+        >
+          <motion.div layout className="text-center w-full mt-4">
+            {/* Word (Kanji) */}
+            <h1
+              className="text-6xl font-black text-slate-800 dark:text-[#f5f5f0] tracking-tight leading-tight mb-6 break-keep drop-shadow-sm"
+              style={{ fontFamily: "'Shippori Mincho', serif" }}
+            >
+              {displayWord}
+            </h1>
+
+            {/* Reading + POS */}
+            <AnimatePresence>
+              {step >= 1 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 5 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex flex-col items-center gap-6"
+                >
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <span className="text-2xl text-slate-600 dark:text-[#c5c5c0] font-medium font-sans tracking-wide">
                       {displayReading}
                     </span>
 
                     {displayPos && (
-                      <span className="inline-block px-2.5 py-0.5 text-xs font-medium text-slate-500 dark:text-[#a5a5a0] border border-[#D5D3CD] dark:border-[#4a4a4a] rounded-full">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                         {displayPos}
                       </span>
                     )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+                  </div>
 
-            {/* Full Context */}
-            <AnimatePresence>
-              {step >= 2 && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
-                  className="w-full mt-8 overflow-hidden"
-                >
                   {/* Meaning */}
                   <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                    className="text-center mb-6"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-center px-4 max-w-xs mx-auto"
                   >
-                    <p className="text-xl sm:text-2xl font-bold text-slate-700 dark:text-[#e5e5e0]">
+                    <p className="text-xl font-bold text-slate-700 dark:text-[#e5e5e0] leading-normal">
                       {displayMeaning}
                     </p>
                   </motion.div>
-
-                  {/* Sentence Example */}
-                  {displaySentence && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.2 }}
-                      className="border-l-4 border-rose-300 dark:border-rose-600 bg-[#EDEBE5] dark:bg-[#3a3a3a] rounded-r-xl p-4 mx-2 cursor-pointer"
-                      onClick={handleSpeakSentence}
-                    >
-                      <p className="text-base text-slate-700 dark:text-[#e5e5e0] font-medium leading-relaxed flex items-start gap-2">
-                        <span className="flex-1">{displaySentence}</span>
-                        <Volume2 size={14} className="shrink-0 text-slate-400 dark:text-[#888] mt-1" />
-                      </p>
-
-                      {displaySentenceMeaning && (
-                        <p className="text-sm text-slate-500 dark:text-[#a5a5a0] mt-2 leading-relaxed">
-                          {displaySentenceMeaning}
-                        </p>
-                      )}
-                    </motion.div>
-                  )}
                 </motion.div>
               )}
             </AnimatePresence>
           </motion.div>
 
-          {/* Action Buttons Area */}
-          <motion.div
-            layout
-            className="bg-[#EDEBE5]/80 dark:bg-[#252525]/80 backdrop-blur-sm border-t border-[#E8E6E0] dark:border-[#3a3a3a] px-5 py-5 pb-6"
-          >
+          {/* Sentence Example */}
+          <AnimatePresence>
+            {step >= 2 && displaySentence && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.3 }}
+                className="w-full mt-8 mb-4 max-w-[90%]"
+              >
+                <motion.div
+                  className="w-full bg-[#f0eee9] dark:bg-[#333] rounded-xl p-5 border-l-4 border-rose-400/80 relative group cursor-pointer active:scale-[0.99] transition-transform"
+                  onClick={(e) => { e.stopPropagation(); handleSpeakSentence(); }}
+                >
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-lg text-slate-800 dark:text-[#e5e5e0] font-medium leading-relaxed font-serif">
+                        {displaySentence}
+                      </p>
+                      {displaySentenceMeaning && (
+                        <p className="text-sm text-slate-500 dark:text-[#a5a5a0] font-medium leading-relaxed">
+                          {displaySentenceMeaning}
+                        </p>
+                      )}
+                    </div>
+                    <Volume2 size={18} className="text-slate-400 group-hover:text-rose-500 transition-colors shrink-0 mt-1" />
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Fixed Bottom Action Area */}
+        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#F7F6F2] via-[#F7F6F2] to-[#F7F6F2]/0 pt-12 pb-6 px-4 z-30 pointer-events-none">
+          <div className="max-w-md mx-auto pointer-events-auto">
             <AnimatePresence mode="wait">
               {mode === 'leech' ? renderLeechButtons() : renderNormalButtons()}
             </AnimatePresence>
-          </motion.div>
-        </motion.div>
-      </AnimatePresence>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 };
