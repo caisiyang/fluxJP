@@ -18,6 +18,10 @@ class FluxDatabase extends Dexie {
       dailyStats: '++id, date',
       favorites: '++id, wordId, addedAt'
     });
+
+    (this as any).version(4).stores({
+      words: '++id, status, level, dueDate, tags, category, [status+dueDate], [word+reading]'
+    });
   }
 }
 
